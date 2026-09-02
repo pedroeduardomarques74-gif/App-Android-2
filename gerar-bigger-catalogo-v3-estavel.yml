@@ -1,0 +1,510 @@
+name: Gerar APK - Bigger Catalogo V3 Estavel
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: Criar e compilar APK
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Configurar Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Configurar Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Instalar SDK Android
+        run: |
+          yes | sdkmanager --licenses >/dev/null || true
+          sdkmanager "platform-tools" "platforms;android-35" "build-tools;35.0.0"
+
+      - name: Configurar Gradle 8.9
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.9'
+
+      - name: Criar projeto Android
+        shell: bash
+        run: |
+          set -e
+
+          mkdir -p app/src/main/java/com/bigger/catalogo
+
+          cat > settings.gradle <<'EOF'
+          pluginManagement {
+              repositories {
+                  google()
+                  mavenCentral()
+                  gradlePluginPortal()
+              }
+          }
+
+          dependencyResolutionManagement {
+              repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
+              repositories {
+                  google()
+                  mavenCentral()
+              }
+          }
+
+          rootProject.name = "BiggerCatalogo"
+          include(":app")
+          EOF
+
+          cat > build.gradle <<'EOF'
+          plugins {
+              id 'com.android.application' version '8.7.3' apply false
+          }
+          EOF
+
+          cat > app/build.gradle <<'EOF'
+          plugins {
+              id 'com.android.application'
+          }
+
+          android {
+              namespace 'com.bigger.catalogo'
+              compileSdk 35
+
+              defaultConfig {
+                  applicationId "com.bigger.catalogo"
+                  minSdk 23
+                  targetSdk 35
+                  versionCode 3
+                  versionName "3.0"
+              }
+
+              buildTypes {
+                  release {
+                      minifyEnabled false
+                  }
+              }
+
+              compileOptions {
+                  sourceCompatibility JavaVersion.VERSION_17
+                  targetCompatibility JavaVersion.VERSION_17
+              }
+          }
+          EOF
+
+          cat > app/src/main/AndroidManifest.xml <<'EOF'
+          <?xml version="1.0" encoding="utf-8"?>
+          <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+              <uses-permission android:name="android.permission.INTERNET" />
+              <application
+                  android:allowBackup="true"
+                  android:usesCleartextTraffic="true"
+                  android:theme="@style/AppTheme"
+                  android:label="Bigger Catálogo M3U">
+                  <activity
+                      android:name=".MainActivity"
+                      android:screenOrientation="portrait"
+                      android:exported="true">
+                      <intent-filter>
+                          <action android:name="android.intent.action.MAIN" />
+                          <category android:name="android.intent.category.LAUNCHER" />
+                      </intent-filter>
+                  </activity>
+              </application>
+          </manifest>
+          EOF
+
+          mkdir -p app/src/main/res/values
+          cat > app/src/main/res/values/styles.xml <<'EOF'
+          <?xml version="1.0" encoding="utf-8"?>
+          <resources>
+              <style name="AppTheme" parent="android:style/Theme.Material.NoActionBar">
+                  <item name="android:fontFamily">sans</item>
+                  <item name="android:windowLightStatusBar">false</item>
+                  <item name="android:statusBarColor">#0D1117</item>
+                  <item name="android:navigationBarColor">#0D1117</item>
+                  <item name="android:colorAccent">#4DA3FF</item>
+              </style>
+          </resources>
+          EOF
+
+          cat > app/src/main/java/com/bigger/catalogo/MainActivity.java <<'EOF'
+          package com.bigger.catalogo;
+
+          import android.app.*;
+          import android.os.*;
+          import android.graphics.Color;
+          import android.graphics.drawable.GradientDrawable;
+          import android.text.*;
+          import android.view.*;
+          import android.widget.*;
+          import java.io.*;
+          import java.net.*;
+          import java.nio.charset.StandardCharsets;
+          import java.util.*;
+          import java.util.regex.*;
+
+          public class MainActivity extends Activity {
+
+              static class Item {
+                  String name, group, url, type, status = "NÃO TESTADO";
+                  Item(String n, String g, String u, String t) {
+                      name=n; group=g; url=u; type=t;
+                  }
+              }
+
+              final ArrayList<Item> all = new ArrayList<>();
+              final ArrayList<Item> shown = new ArrayList<>();
+              ArrayAdapter<String> adapter;
+              ListView list;
+              EditText urlBox, searchBox;
+              TextView totalView, channelView, movieView, seriesView, infoView;
+              Button loadButton;
+              final Handler ui = new Handler(Looper.getMainLooper());
+
+              int bg = Color.rgb(13,17,23);
+              int panel = Color.rgb(22,27,34);
+              int text = Color.WHITE;
+              int muted = Color.rgb(160,170,180);
+
+              @Override
+              public void onCreate(Bundle b) {
+                  super.onCreate(b);
+
+                  ScrollView scroll = new ScrollView(this);
+                  scroll.setFillViewport(true);
+                  LinearLayout root = new LinearLayout(this);
+                  root.setOrientation(LinearLayout.VERTICAL);
+                  root.setPadding(dp(16), dp(20), dp(16), dp(20));
+                  root.setBackgroundColor(bg);
+                  scroll.addView(root);
+
+                  TextView title = tv("BIGGER CATÁLOGO", 26, true);
+                  root.addView(title);
+
+                  TextView sub = tv("Consulta M3U • canais • filmes • séries", 14, false);
+                  sub.setTextColor(muted);
+                  root.addView(sub, lp(-1, -2, 0, 4, 0, 16));
+
+                  urlBox = edit("Cole aqui o link M3U / M3U8");
+                  root.addView(urlBox);
+
+                  loadButton = button("CARREGAR CATÁLOGO");
+                  root.addView(loadButton, lp(-1, dp(52), 0, 10, 0, 14));
+
+                  LinearLayout cards = new LinearLayout(this);
+                  cards.setOrientation(LinearLayout.HORIZONTAL);
+                  totalView = card(cards, "TOTAL");
+                  channelView = card(cards, "CANAIS");
+                  movieView = card(cards, "FILMES");
+                  seriesView = card(cards, "SÉRIES");
+                  root.addView(cards, lp(-1, dp(82), 0, 0, 0, 16));
+
+                  searchBox = edit("Pesquisar conteúdo...");
+                  searchBox.setEnabled(false);
+                  root.addView(searchBox);
+
+                  infoView = tv("Cole o link da lista e toque em CARREGAR CATÁLOGO.", 13, false);
+                  infoView.setTextColor(muted);
+                  root.addView(infoView, lp(-1,-2,0,10,0,8));
+
+                  list = new ListView(this);
+                  list.setDividerHeight(dp(1));
+                  list.setBackgroundColor(bg);
+                  adapter = new ArrayAdapter<String>(this, android.R.layout.simple_list_item_1, new ArrayList<String>()) {
+                      @Override
+                      public View getView(int position, View convertView, android.view.ViewGroup parent) {
+                          TextView v = (TextView)super.getView(position, convertView, parent);
+                          v.setTextColor(Color.WHITE);
+                          v.setTextSize(15);
+                          v.setPadding(dp(12), dp(12), dp(12), dp(12));
+                          return v;
+                      }
+                  };
+                  list.setAdapter(adapter);
+                  root.addView(list, new LinearLayout.LayoutParams(-1, dp(650)));
+
+                  setContentView(scroll);
+
+                  loadButton.setOnClickListener(v -> loadM3u());
+                  searchBox.addTextChangedListener(new TextWatcher() {
+                      public void beforeTextChanged(CharSequence s,int st,int c,int a){}
+                      public void onTextChanged(CharSequence s,int st,int b,int c){ filter(s.toString()); }
+                      public void afterTextChanged(Editable e){}
+                  });
+
+                  list.setOnItemClickListener((p,v,pos,id) -> {
+                      if (pos < shown.size()) showItemDialog(shown.get(pos));
+                  });
+              }
+
+              TextView tv(String s, int sp, boolean bold) {
+                  TextView v = new TextView(this);
+                  v.setText(s);
+                  v.setTextColor(text);
+                  v.setTextSize(sp);
+                  if (bold) v.setTypeface(null, android.graphics.Typeface.BOLD);
+                  return v;
+              }
+
+              EditText edit(String hint) {
+                  EditText e = new EditText(this);
+                  e.setHint(hint);
+                  e.setHintTextColor(Color.rgb(120,130,140));
+                  e.setTextColor(Color.WHITE);
+                  e.setSingleLine(true);
+                  e.setPadding(dp(14),0,dp(14),0);
+                  e.setBackground(round(panel, dp(12)));
+                  return e;
+              }
+
+              Button button(String s) {
+                  Button b = new Button(this);
+                  b.setText(s);
+                  b.setTextColor(Color.WHITE);
+                  b.setTextSize(14);
+                  b.setAllCaps(false);
+                  b.setBackground(round(Color.rgb(34,112,210), dp(12)));
+                  return b;
+              }
+
+              TextView card(LinearLayout parent, String label) {
+                  TextView v = tv(label + "\n0", 14, true);
+                  v.setGravity(Gravity.CENTER);
+                  v.setBackground(round(panel, dp(12)));
+                  LinearLayout.LayoutParams p = new LinearLayout.LayoutParams(0,-1,1);
+                  p.setMargins(dp(3),0,dp(3),0);
+                  parent.addView(v,p);
+                  return v;
+              }
+
+              GradientDrawable round(int color, int r) {
+                  GradientDrawable d = new GradientDrawable();
+                  d.setColor(color);
+                  d.setCornerRadius(r);
+                  return d;
+              }
+
+              LinearLayout.LayoutParams lp(int w,int h,int l,int t,int r,int b) {
+                  LinearLayout.LayoutParams p = new LinearLayout.LayoutParams(w,h);
+                  p.setMargins(dp(l),dp(t),dp(r),dp(b));
+                  return p;
+              }
+
+              int dp(int v) {
+                  return (int)(v * getResources().getDisplayMetrics().density + .5f);
+              }
+
+              void loadM3u() {
+                  String raw = urlBox.getText().toString().trim();
+                  if (!(raw.startsWith("http://") || raw.startsWith("https://"))) {
+                      toast("Cole um link M3U válido.");
+                      return;
+                  }
+
+                  loadButton.setEnabled(false);
+                  loadButton.setText("CARREGANDO...");
+                  infoView.setText("Baixando e organizando o catálogo...");
+
+                  new Thread(() -> {
+                      try {
+                          HttpURLConnection c = (HttpURLConnection)new URL(raw).openConnection();
+                          c.setConnectTimeout(15000);
+                          c.setReadTimeout(30000);
+                          c.setRequestProperty("User-Agent","BiggerCatalogo/3.0");
+                          int code = c.getResponseCode();
+                          if (code < 200 || code >= 400) throw new IOException("HTTP " + code);
+
+                          BufferedReader br = new BufferedReader(new InputStreamReader(c.getInputStream(), StandardCharsets.UTF_8));
+                          ArrayList<Item> parsed = new ArrayList<>();
+                          String line, meta=null;
+                          while ((line=br.readLine()) != null) {
+                              line=line.trim();
+                              if (line.startsWith("#EXTINF")) {
+                                  meta=line;
+                              } else if (meta != null && !line.isEmpty() && !line.startsWith("#")) {
+                                  String name = attr(meta,"tvg-name");
+                                  if (name.isEmpty()) {
+                                      int comma=meta.lastIndexOf(',');
+                                      name = comma>=0 ? meta.substring(comma+1).trim() : "Sem nome";
+                                  }
+                                  String group=attr(meta,"group-title");
+                                  String type=classify(name,group,line);
+                                  parsed.add(new Item(name,group,line,type));
+                                  meta=null;
+                              }
+                          }
+                          br.close();
+
+                          ui.post(() -> {
+                              all.clear();
+                              all.addAll(parsed);
+                              searchBox.setEnabled(true);
+                              updateCounters();
+                              filter("");
+                              infoView.setText(parsed.size() + " conteúdos carregados. Toque em um item para testar.");
+                              loadButton.setEnabled(true);
+                              loadButton.setText("RECARREGAR CATÁLOGO");
+                          });
+                      } catch (Exception e) {
+                          ui.post(() -> {
+                              loadButton.setEnabled(true);
+                              loadButton.setText("CARREGAR CATÁLOGO");
+                              infoView.setText("Falha ao carregar: " + e.getMessage());
+                              toast("Não foi possível carregar essa lista.");
+                          });
+                      }
+                  }).start();
+              }
+
+              String attr(String s, String key) {
+                  Matcher m=Pattern.compile(key+"=\"([^\"]*)\"",Pattern.CASE_INSENSITIVE).matcher(s);
+                  return m.find()?m.group(1).trim():"";
+              }
+
+              String classify(String name,String group,String url) {
+                  String s=(name+" "+group+" "+url).toLowerCase(Locale.ROOT);
+                  if (s.contains("series") || s.contains("série") || s.contains("serie") ||
+                      s.contains("/series/") || s.contains("temporada") || s.contains("season")) return "SÉRIE";
+                  if (s.contains("movie") || s.contains("filme") || s.contains("/movie/") ||
+                      s.endsWith(".mp4") || s.endsWith(".mkv") || s.endsWith(".avi")) return "FILME";
+                  return "CANAL";
+              }
+
+              void updateCounters() {
+                  int c=0,m=0,s=0;
+                  for(Item i:all){
+                      if(i.type.equals("CANAL")) c++;
+                      else if(i.type.equals("FILME")) m++;
+                      else s++;
+                  }
+                  totalView.setText("TOTAL\n"+all.size());
+                  channelView.setText("CANAIS\n"+c);
+                  movieView.setText("FILMES\n"+m);
+                  seriesView.setText("SÉRIES\n"+s);
+              }
+
+              void filter(String q) {
+                  String x=q.trim().toLowerCase(Locale.ROOT);
+                  shown.clear();
+                  ArrayList<String> rows = new ArrayList<>();
+                  for(Item i:all){
+                      if(x.isEmpty() || i.name.toLowerCase(Locale.ROOT).contains(x) ||
+                         i.group.toLowerCase(Locale.ROOT).contains(x) ||
+                         i.type.toLowerCase(Locale.ROOT).contains(x)){
+                          shown.add(i);
+                          String group=i.group.isEmpty()?"Sem categoria":i.group;
+                          rows.add(i.name+"\n"+i.type+" • "+group+" • "+i.status);
+                      }
+                  }
+                  adapter.clear();
+                  adapter.addAll(rows);
+                  adapter.notifyDataSetChanged();
+              }
+
+              void showItemDialog(Item item) {
+                  LinearLayout box = new LinearLayout(this);
+                  box.setOrientation(LinearLayout.VERTICAL);
+                  box.setPadding(dp(20),dp(8),dp(20),0);
+
+                  TextView name = tv(item.name,20,true);
+                  name.setTextColor(Color.BLACK);
+                  box.addView(name);
+
+                  TextView details = tv(item.type+" • "+(item.group.isEmpty()?"Sem categoria":item.group),14,false);
+                  details.setTextColor(Color.DKGRAY);
+                  box.addView(details, lp(-1,-2,0,5,0,12));
+
+                  TextView status = tv("Status: "+item.status,16,true);
+                  status.setTextColor(statusColor(item.status));
+                  box.addView(status);
+
+                  AlertDialog dlg = new AlertDialog.Builder(this)
+                      .setTitle("Verificar conteúdo")
+                      .setView(box)
+                      .setNegativeButton("Fechar",null)
+                      .setPositiveButton("TESTAR AGORA",null)
+                      .create();
+
+                  dlg.setOnShowListener(x -> dlg.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(v -> {
+                      status.setText("Status: TESTANDO...");
+                      status.setTextColor(Color.rgb(230,150,0));
+                      testItem(item, status);
+                  }));
+                  dlg.show();
+              }
+
+              int statusColor(String s){
+                  if(s.equals("FUNCIONANDO")) return Color.rgb(0,150,70);
+                  if(s.equals("LENTO")) return Color.rgb(220,140,0);
+                  if(s.equals("FORA DO AR")) return Color.rgb(200,30,40);
+                  return Color.DKGRAY;
+              }
+
+              void testItem(Item item, TextView statusView) {
+                  new Thread(() -> {
+                      long start=System.currentTimeMillis();
+                      String result="FORA DO AR";
+                      HttpURLConnection c=null;
+                      try {
+                          c=(HttpURLConnection)new URL(item.url).openConnection();
+                          c.setInstanceFollowRedirects(true);
+                          c.setConnectTimeout(8000);
+                          c.setReadTimeout(8000);
+                          c.setRequestProperty("User-Agent","BiggerCatalogo/3.0");
+                          c.setRequestProperty("Range","bytes=0-2048");
+                          c.setRequestMethod("GET");
+
+                          int code=c.getResponseCode();
+                          InputStream in=(code>=200 && code<400)?c.getInputStream():null;
+                          if(in!=null){
+                              byte[] b=new byte[256];
+                              int n=in.read(b);
+                              in.close();
+                              if(n>=0){
+                                  long ms=System.currentTimeMillis()-start;
+                                  result = ms > 4500 ? "LENTO" : "FUNCIONANDO";
+                              }
+                          }
+                      } catch(Exception ignored) {
+                          result="FORA DO AR";
+                      } finally {
+                          if(c!=null)c.disconnect();
+                      }
+
+                      final String r=result;
+                      ui.post(() -> {
+                          item.status=r;
+                          statusView.setText("Status: "+r);
+                          statusView.setTextColor(statusColor(r));
+                          filter(searchBox.getText().toString());
+                      });
+                  }).start();
+              }
+
+              void toast(String s) {
+                  Toast.makeText(this,s,Toast.LENGTH_SHORT).show();
+              }
+          }
+          EOF
+
+      - name: Compilar APK Debug
+        shell: bash
+        run: |
+          set -e
+          gradle --no-daemon --stacktrace :app:assembleDebug
+
+      - name: Preparar APK
+        shell: bash
+        run: |
+          set -e
+          mkdir -p saida
+          cp app/build/outputs/apk/debug/app-debug.apk "saida/Bigger-Catalogo-M3U-v3.apk"
+          ls -lh saida/
+
+      - name: Disponibilizar APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: Bigger-Catalogo-M3U-v3-APK
+          path: saida/Bigger-Catalogo-M3U-v3.apk
+          if-no-files-found: error
