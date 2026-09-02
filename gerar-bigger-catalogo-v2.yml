@@ -1,0 +1,489 @@
+name: Gerar APK - Bigger Catalogo V2
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: Criar e compilar APK
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Baixar repositorio
+        uses: actions/checkout@v4
+
+      - name: Configurar Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Configurar Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Instalar SDK Android 35
+        shell: bash
+        run: |
+          yes | sdkmanager --licenses >/dev/null 2>&1 || true
+          sdkmanager "platform-tools" "platforms;android-35" "build-tools;35.0.0"
+
+      - name: Configurar Gradle 8.9
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.9'
+
+      - name: Criar projeto Android
+        shell: bash
+        run: |
+          rm -rf BiggerCatalogoBuild
+          mkdir -p BiggerCatalogoBuild/app/src/main/java/com/grupobigger/catalogo
+          mkdir -p BiggerCatalogoBuild/app/src/main/res/values
+
+          cat > BiggerCatalogoBuild/settings.gradle.kts <<'EOF'
+          pluginManagement {
+              repositories {
+                  google()
+                  mavenCentral()
+                  gradlePluginPortal()
+              }
+          }
+          dependencyResolutionManagement {
+              repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
+              repositories {
+                  google()
+                  mavenCentral()
+              }
+          }
+          rootProject.name = "BiggerCatalogo"
+          include(":app")
+          EOF
+
+          cat > BiggerCatalogoBuild/build.gradle.kts <<'EOF'
+          plugins {
+              id("com.android.application") version "8.7.3" apply false
+              id("org.jetbrains.kotlin.android") version "2.0.21" apply false
+              id("org.jetbrains.kotlin.plugin.compose") version "2.0.21" apply false
+          }
+          EOF
+
+          cat > BiggerCatalogoBuild/gradle.properties <<'EOF'
+          org.gradle.jvmargs=-Xmx3g -Dfile.encoding=UTF-8
+          android.useAndroidX=true
+          kotlin.code.style=official
+          EOF
+
+          cat > BiggerCatalogoBuild/app/build.gradle.kts <<'EOF'
+          plugins {
+              id("com.android.application")
+              id("org.jetbrains.kotlin.android")
+              id("org.jetbrains.kotlin.plugin.compose")
+          }
+
+          android {
+              namespace = "com.grupobigger.catalogo"
+              compileSdk = 35
+
+              defaultConfig {
+                  applicationId = "com.grupobigger.catalogo"
+                  minSdk = 26
+                  targetSdk = 35
+                  versionCode = 2
+                  versionName = "2.0"
+              }
+
+              buildFeatures {
+                  compose = true
+              }
+
+              packaging {
+                  resources.excludes += "/META-INF/{AL2.0,LGPL2.1}"
+              }
+          }
+
+          dependencies {
+              implementation("androidx.core:core-ktx:1.15.0")
+              implementation("androidx.activity:activity-compose:1.10.0")
+              implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.8.7")
+              implementation("androidx.compose.ui:ui:1.7.6")
+              implementation("androidx.compose.ui:ui-tooling-preview:1.7.6")
+              implementation("androidx.compose.material3:material3:1.3.1")
+              debugImplementation("androidx.compose.ui:ui-tooling:1.7.6")
+          }
+          EOF
+
+          cat > BiggerCatalogoBuild/app/src/main/AndroidManifest.xml <<'EOF'
+          <?xml version="1.0" encoding="utf-8"?>
+          <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+              <uses-permission android:name="android.permission.INTERNET" />
+              <application
+                  android:allowBackup="true"
+                  android:label="Bigger Catálogo"
+                  android:theme="@style/Theme.BiggerCatalogo"
+                  android:usesCleartextTraffic="true">
+                  <activity
+                      android:name=".MainActivity"
+                      android:exported="true">
+                      <intent-filter>
+                          <action android:name="android.intent.action.MAIN" />
+                          <category android:name="android.intent.category.LAUNCHER" />
+                      </intent-filter>
+                  </activity>
+              </application>
+          </manifest>
+          EOF
+
+          cat > BiggerCatalogoBuild/app/src/main/res/values/themes.xml <<'EOF'
+          <?xml version="1.0" encoding="utf-8"?>
+          <resources>
+              <style name="Theme.BiggerCatalogo" parent="android:style/Theme.Material.NoActionBar">
+                  <item name="android:fontFamily">sans</item>
+                  <item name="android:statusBarColor">#0B1020</item>
+                  <item name="android:navigationBarColor">#0B1020</item>
+                  <item name="android:windowLightStatusBar">false</item>
+              </style>
+          </resources>
+          EOF
+
+          cat > BiggerCatalogoBuild/app/src/main/java/com/grupobigger/catalogo/MainActivity.kt <<'EOF'
+          package com.grupobigger.catalogo
+
+          import android.os.Bundle
+          import android.os.SystemClock
+          import androidx.activity.ComponentActivity
+          import androidx.activity.compose.setContent
+          import androidx.compose.foundation.layout.*
+          import androidx.compose.foundation.lazy.LazyColumn
+          import androidx.compose.foundation.lazy.items
+          import androidx.compose.foundation.shape.RoundedCornerShape
+          import androidx.compose.material3.*
+          import androidx.compose.runtime.*
+          import androidx.compose.ui.Alignment
+          import androidx.compose.ui.Modifier
+          import androidx.compose.ui.text.font.FontWeight
+          import androidx.compose.ui.unit.dp
+          import kotlinx.coroutines.Dispatchers
+          import kotlinx.coroutines.launch
+          import kotlinx.coroutines.withContext
+          import java.net.HttpURLConnection
+          import java.net.URL
+
+          class MainActivity : ComponentActivity() {
+              override fun onCreate(savedInstanceState: Bundle?) {
+                  super.onCreate(savedInstanceState)
+                  setContent { BiggerCatalogApp() }
+              }
+          }
+
+          enum class ContentType { LIVE, MOVIE, SERIES, OTHER }
+          enum class StreamState { UNTESTED, TESTING, ONLINE, SLOW, OFFLINE }
+
+          data class CatalogItem(
+              val name: String,
+              val group: String,
+              val url: String,
+              val type: ContentType
+          )
+
+          data class ProbeResult(
+              val state: StreamState,
+              val detail: String
+          )
+
+          @OptIn(ExperimentalMaterial3Api::class)
+          @Composable
+          fun BiggerCatalogApp() {
+              MaterialTheme(colorScheme = darkColorScheme()) {
+                  var m3uUrl by remember { mutableStateOf("") }
+                  var query by remember { mutableStateOf("") }
+                  var catalog by remember { mutableStateOf(emptyList<CatalogItem>()) }
+                  var loading by remember { mutableStateOf(false) }
+                  var message by remember { mutableStateOf<String?>(null) }
+                  var selectedType by remember { mutableStateOf<ContentType?>(null) }
+                  val states = remember { mutableStateMapOf<String, ProbeResult>() }
+                  val scope = rememberCoroutineScope()
+
+                  val filtered = remember(catalog, query, selectedType) {
+                      catalog.filter { item ->
+                          (selectedType == null || item.type == selectedType) &&
+                              (query.isBlank() || item.name.contains(query, true) || item.group.contains(query, true))
+                      }
+                  }
+
+                  Scaffold(
+                      topBar = {
+                          TopAppBar(
+                              title = {
+                                  Column {
+                                      Text("Bigger Catálogo", fontWeight = FontWeight.Bold)
+                                      Text("Consulta e teste de conteúdos", style = MaterialTheme.typography.labelMedium)
+                                  }
+                              }
+                          )
+                      }
+                  ) { padding ->
+                      Column(
+                          modifier = Modifier
+                              .padding(padding)
+                              .padding(14.dp)
+                              .fillMaxSize(),
+                          verticalArrangement = Arrangement.spacedBy(10.dp)
+                      ) {
+                          OutlinedTextField(
+                              value = m3uUrl,
+                              onValueChange = { m3uUrl = it },
+                              label = { Text("Link M3U / M3U8") },
+                              placeholder = { Text("Cole aqui o link do servidor") },
+                              singleLine = true,
+                              modifier = Modifier.fillMaxWidth()
+                          )
+
+                          Button(
+                              onClick = {
+                                  loading = true
+                                  message = null
+                                  query = ""
+                                  selectedType = null
+                                  states.clear()
+                                  scope.launch {
+                                      runCatching { loadM3u(m3uUrl.trim()) }
+                                          .onSuccess {
+                                              catalog = it
+                                              message = if (it.isEmpty()) "Nenhum conteúdo encontrado." else "Catálogo carregado com sucesso."
+                                          }
+                                          .onFailure { message = "Erro: ${it.message ?: "não foi possível carregar"}" }
+                                      loading = false
+                                  }
+                              },
+                              enabled = !loading && m3uUrl.isNotBlank(),
+                              modifier = Modifier.fillMaxWidth().height(50.dp)
+                          ) {
+                              Text(if (loading) "CARREGANDO..." else "CARREGAR CATÁLOGO")
+                          }
+
+                          if (loading) LinearProgressIndicator(Modifier.fillMaxWidth())
+                          message?.let { Text(it, style = MaterialTheme.typography.bodySmall) }
+
+                          if (catalog.isNotEmpty()) {
+                              val live = catalog.count { it.type == ContentType.LIVE }
+                              val movies = catalog.count { it.type == ContentType.MOVIE }
+                              val series = catalog.count { it.type == ContentType.SERIES }
+
+                              Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+                                  StatCard("TOTAL", catalog.size, Modifier.weight(1f)) { selectedType = null }
+                                  StatCard("CANAIS", live, Modifier.weight(1f)) { selectedType = ContentType.LIVE }
+                              }
+                              Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+                                  StatCard("FILMES", movies, Modifier.weight(1f)) { selectedType = ContentType.MOVIE }
+                                  StatCard("SÉRIES", series, Modifier.weight(1f)) { selectedType = ContentType.SERIES }
+                              }
+
+                              OutlinedTextField(
+                                  value = query,
+                                  onValueChange = { query = it },
+                                  label = { Text("Pesquisar conteúdo") },
+                                  singleLine = true,
+                                  modifier = Modifier.fillMaxWidth()
+                              )
+
+                              Text("${filtered.size} resultado(s) • toque em TESTAR para verificar", style = MaterialTheme.typography.labelMedium)
+
+                              LazyColumn(
+                                  modifier = Modifier.fillMaxSize(),
+                                  verticalArrangement = Arrangement.spacedBy(8.dp)
+                              ) {
+                                  items(filtered, key = { it.url + "|" + it.name }) { item ->
+                                      val result = states[item.url] ?: ProbeResult(StreamState.UNTESTED, "Não testado")
+                                      ContentCard(
+                                          item = item,
+                                          result = result,
+                                          onTest = {
+                                              if (result.state != StreamState.TESTING) {
+                                                  states[item.url] = ProbeResult(StreamState.TESTING, "Testando...")
+                                                  scope.launch {
+                                                      states[item.url] = probeStream(item.url)
+                                                  }
+                                              }
+                                          }
+                                      )
+                                  }
+                              }
+                          } else if (!loading) {
+                              Card(shape = RoundedCornerShape(18.dp), modifier = Modifier.fillMaxWidth()) {
+                                  Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                                      Text("Como usar", fontWeight = FontWeight.Bold)
+                                      Text("Cole o link M3U, carregue o catálogo, pesquise o conteúdo e toque em TESTAR. O app informa se o endereço está funcionando, lento ou fora do ar.")
+                                  }
+                              }
+                          }
+                      }
+                  }
+              }
+          }
+
+          @Composable
+          fun StatCard(title: String, value: Int, modifier: Modifier = Modifier, onClick: () -> Unit) {
+              Card(onClick = onClick, modifier = modifier, shape = RoundedCornerShape(16.dp)) {
+                  Column(Modifier.padding(14.dp)) {
+                      Text(title, style = MaterialTheme.typography.labelMedium)
+                      Text(value.toString(), style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
+                  }
+              }
+          }
+
+          @Composable
+          fun ContentCard(item: CatalogItem, result: ProbeResult, onTest: () -> Unit) {
+              Card(modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(16.dp)) {
+                  Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                      Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+                          Column(Modifier.weight(1f)) {
+                              Text(item.name, fontWeight = FontWeight.SemiBold)
+                              if (item.group.isNotBlank()) Text(item.group, style = MaterialTheme.typography.bodySmall)
+                              Text(typeLabel(item.type), style = MaterialTheme.typography.labelSmall)
+                          }
+                          StatusBadge(result)
+                      }
+                      Button(
+                          onClick = onTest,
+                          enabled = result.state != StreamState.TESTING,
+                          modifier = Modifier.fillMaxWidth()
+                      ) {
+                          Text(if (result.state == StreamState.TESTING) "TESTANDO..." else "TESTAR")
+                      }
+                  }
+              }
+          }
+
+          @Composable
+          fun StatusBadge(result: ProbeResult) {
+              val text = when (result.state) {
+                  StreamState.UNTESTED -> "NÃO TESTADO"
+                  StreamState.TESTING -> "TESTANDO"
+                  StreamState.ONLINE -> "FUNCIONANDO"
+                  StreamState.SLOW -> "LENTO"
+                  StreamState.OFFLINE -> "FORA DO AR"
+              }
+              AssistChip(onClick = {}, label = { Text(text) })
+              if (result.detail.isNotBlank() && result.state !in listOf(StreamState.UNTESTED, StreamState.TESTING)) {
+                  Spacer(Modifier.width(4.dp))
+              }
+          }
+
+          fun typeLabel(type: ContentType): String = when (type) {
+              ContentType.LIVE -> "CANAL"
+              ContentType.MOVIE -> "FILME"
+              ContentType.SERIES -> "SÉRIE"
+              ContentType.OTHER -> "OUTRO"
+          }
+
+          suspend fun loadM3u(address: String): List<CatalogItem> = withContext(Dispatchers.IO) {
+              val connection = URL(address).openConnection() as HttpURLConnection
+              connection.connectTimeout = 15000
+              connection.readTimeout = 45000
+              connection.instanceFollowRedirects = true
+              connection.setRequestProperty("User-Agent", "BiggerCatalog/2.0")
+              try {
+                  val code = connection.responseCode
+                  if (code !in 200..299) error("Servidor respondeu HTTP $code")
+                  val text = connection.inputStream.bufferedReader().use { it.readText() }
+                  if (!text.contains("#EXTM3U", true) && !text.contains("#EXTINF", true)) {
+                      error("O endereço não retornou uma lista M3U válida")
+                  }
+                  parseM3u(text)
+              } finally {
+                  connection.disconnect()
+              }
+          }
+
+          fun parseM3u(text: String): List<CatalogItem> {
+              val output = ArrayList<CatalogItem>()
+              var info: String? = null
+              text.lineSequence().forEach { raw ->
+                  val line = raw.trim()
+                  when {
+                      line.startsWith("#EXTINF", true) -> info = line
+                      line.isNotBlank() && !line.startsWith("#") && info != null -> {
+                          val ext = info.orEmpty()
+                          val name = ext.substringAfterLast(',', "Sem nome").trim().ifBlank { "Sem nome" }
+                          val group = attr(ext, "group-title").orEmpty()
+                          output += CatalogItem(name, group, line, classify(name, group, line))
+                          info = null
+                      }
+                  }
+              }
+              return output.distinctBy { it.url + "|" + it.name }
+          }
+
+          private fun attr(line: String, key: String): String? {
+              return Regex("$key=\\\"([^\\\"]*)\\\"", RegexOption.IGNORE_CASE)
+                  .find(line)?.groupValues?.getOrNull(1)
+          }
+
+          private fun classify(name: String, group: String, url: String): ContentType {
+              val n = name.lowercase()
+              val g = group.lowercase()
+              val u = url.lowercase()
+
+              if (u.contains("/series/") || g.contains("serie") || g.contains("série") || g.contains("series") ||
+                  g.contains("novela") || g.contains("temporada") || Regex("s\\d{1,2}e\\d{1,3}").containsMatchIn(n)) {
+                  return ContentType.SERIES
+              }
+              if (u.contains("/movie/") || g.contains("filme") || g.contains("movie") || g.contains("cinema") ||
+                  g.contains("vod") || u.endsWith(".mp4") || u.endsWith(".mkv") || u.endsWith(".avi")) {
+                  return ContentType.MOVIE
+              }
+              if (u.contains("/live/") || u.endsWith(".ts") || u.endsWith(".m3u8") || g.contains("canal") ||
+                  g.contains("tv") || g.contains("esporte") || g.contains("sport") || g.contains("news")) {
+                  return ContentType.LIVE
+              }
+              return ContentType.OTHER
+          }
+
+          suspend fun probeStream(address: String): ProbeResult = withContext(Dispatchers.IO) {
+              val started = SystemClock.elapsedRealtime()
+              var connection: HttpURLConnection? = null
+              try {
+                  connection = URL(address).openConnection() as HttpURLConnection
+                  connection.connectTimeout = 7000
+                  connection.readTimeout = 7000
+                  connection.instanceFollowRedirects = true
+                  connection.requestMethod = "GET"
+                  connection.setRequestProperty("User-Agent", "BiggerCatalog/2.0")
+                  connection.setRequestProperty("Range", "bytes=0-1023")
+                  connection.setRequestProperty("Connection", "close")
+                  val code = connection.responseCode
+                  val elapsed = SystemClock.elapsedRealtime() - started
+
+                  when {
+                      code in 200..299 -> {
+                          if (elapsed >= 4000) ProbeResult(StreamState.SLOW, "HTTP $code • ${elapsed}ms")
+                          else ProbeResult(StreamState.ONLINE, "HTTP $code • ${elapsed}ms")
+                      }
+                      else -> ProbeResult(StreamState.OFFLINE, "HTTP $code")
+                  }
+              } catch (e: Exception) {
+                  ProbeResult(StreamState.OFFLINE, e.javaClass.simpleName)
+              } finally {
+                  connection?.disconnect()
+              }
+          }
+          EOF
+
+      - name: Compilar APK Debug
+        working-directory: BiggerCatalogoBuild
+        shell: bash
+        run: gradle --no-daemon :app:assembleDebug --stacktrace
+
+      - name: Preparar APK
+        shell: bash
+        run: |
+          mkdir -p apk-saida
+          cp BiggerCatalogoBuild/app/build/outputs/apk/debug/app-debug.apk apk-saida/Bigger-Catalogo-v2.apk
+          ls -lh apk-saida/Bigger-Catalogo-v2.apk
+
+      - name: Disponibilizar APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: Bigger-Catalogo-v2-APK
+          path: apk-saida/Bigger-Catalogo-v2.apk
+          if-no-files-found: error
+          retention-days: 30
