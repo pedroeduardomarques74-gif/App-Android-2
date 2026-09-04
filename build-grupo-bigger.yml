@@ -1,0 +1,330 @@
+name: Build GRUPO BIGGER
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Baixar arquivos do repositório
+        uses: actions/checkout@v4
+
+      - name: Preparar Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Instalar ferramentas
+        shell: bash
+        run: |
+          set -e
+          sudo apt-get update
+          sudo apt-get install -y zipalign apksigner imagemagick python3-pil
+          curl -L --fail --retry 3 \
+            -o "$RUNNER_TEMP/apktool.jar" \
+            "https://bitbucket.org/iBotPeaches/apktool/downloads/apktool_2.11.1.jar"
+
+      - name: Localizar APK original
+        id: input
+        shell: bash
+        run: |
+          set -e
+          APK=""
+          for candidate in original.apk app.apk xciptv.apk; do
+            if [ -f "$candidate" ]; then APK="$candidate"; break; fi
+          done
+          if [ -z "$APK" ]; then
+            APK="$(find . -maxdepth 2 -type f -iname '*.apk' | head -n 1)"
+          fi
+          if [ -z "$APK" ] || [ ! -f "$APK" ]; then
+            echo "ERRO: envie o APK original para a raiz do repositório com o nome original.apk"
+            exit 1
+          fi
+          echo "apk=$APK" >> "$GITHUB_OUTPUT"
+          echo "APK encontrado: $APK"
+
+      - name: Decompilar corretamente com Apktool
+        shell: bash
+        run: |
+          set -e
+          java -jar "$RUNNER_TEMP/apktool.jar" d -f "${{ steps.input.outputs.apk }}" -o work
+
+      - name: Aplicar marca GRUPO BIGGER e português
+        shell: bash
+        run: |
+          set -e
+          python3 <<'PY'
+          from pathlib import Path
+          import re
+
+          root = Path('work')
+
+          # Somente textos visíveis. Não altera pacote/classe com.nathnetwork.xciptv.
+          repl = {
+              'XCIPTV MULTI': 'GRUPO BIGGER',
+              'XCIPTV Multi': 'GRUPO BIGGER',
+              'Xciptv Multi': 'GRUPO BIGGER',
+              'P2 MULTI': 'GRUPO BIGGER',
+              'P2 Multi': 'GRUPO BIGGER',
+              'P2Multi': 'GRUPO BIGGER',
+              'Sign In': 'ENTRAR',
+              'SIGN IN': 'ENTRAR',
+              'Enter XC API URL': 'URL DO SERVIDOR',
+              'Enter Username': 'Nome de usuário',
+              'Username': 'Nome de usuário',
+              'Password': 'Senha',
+              'Live TV': 'TV AO VIVO',
+              'LIVE TV': 'TV AO VIVO',
+              'Movies': 'FILMES',
+              'MOVIES': 'FILMES',
+              'Series': 'SÉRIES',
+              'SERIES': 'SÉRIES',
+              'Favorites': 'FAVORITOS',
+              'FAVOURITES': 'FAVORITOS',
+              'Settings': 'CONFIGURAÇÕES',
+              'SETTINGS': 'CONFIGURAÇÕES',
+              'Search': 'PESQUISAR',
+              'SEARCH': 'PESQUISAR',
+              'Update': 'ATUALIZAR',
+              'Refresh': 'ATUALIZAR',
+              'Recently Added': 'ADICIONADOS RECENTEMENTE',
+              'Categories': 'CATEGORIAS',
+              'Category': 'CATEGORIA',
+              'All': 'TODOS',
+              'Logout': 'SAIR',
+              'Log Out': 'SAIR',
+              'Exit': 'SAIR',
+              'Retry': 'TENTAR NOVAMENTE',
+              'Cancel': 'CANCELAR',
+              'Save': 'SALVAR',
+              'Back': 'VOLTAR',
+              'Next': 'PRÓXIMO',
+              'Previous': 'ANTERIOR',
+              'Loading...': 'CARREGANDO...',
+              'Please wait...': 'AGUARDE...',
+              'No Internet Connection': 'SEM CONEXÃO COM A INTERNET',
+              'Account Info': 'INFORMAÇÕES DA CONTA',
+              'Expire Date': 'DATA DE VENCIMENTO',
+              'Active Connections': 'CONEXÕES ATIVAS',
+              'Max Connections': 'MÁXIMO DE CONEXÕES',
+              'TV Guide': 'GUIA DE TV',
+              'Catch Up': 'REPLAY',
+              'Recordings': 'GRAVAÇÕES',
+              'Multi-Screen': 'MULTITELA',
+              'Add User': 'ADICIONAR USUÁRIO',
+              'Select Player': 'SELECIONAR PLAYER',
+              'External Player': 'PLAYER EXTERNO',
+              'Language': 'IDIOMA',
+              'Parental Control': 'CONTROLE PARENTAL',
+              'Enter Pin': 'DIGITE O PIN',
+          }
+
+          # Evita tocar em arquivos binários. Apktool converte recursos/XML/smali para texto.
+          text_ext = {'.xml', '.smali', '.txt', '.json', '.html', '.js'}
+          changed = 0
+          for p in root.rglob('*'):
+              if not p.is_file() or p.suffix.lower() not in text_ext:
+                  continue
+              try:
+                  s = p.read_text(encoding='utf-8')
+              except Exception:
+                  continue
+              old = s
+              for a, b in repl.items():
+                  s = s.replace(a, b)
+              if s != old:
+                  p.write_text(s, encoding='utf-8')
+                  changed += 1
+
+          # Força o nome visível do aplicativo sem renomear o package interno.
+          manifest = root / 'AndroidManifest.xml'
+          if manifest.exists():
+              s = manifest.read_text(encoding='utf-8')
+              # Altera somente o label do <application>.
+              m = re.search(r'<application\b[^>]*>', s, flags=re.S)
+              if m:
+                  tag = m.group(0)
+                  if re.search(r'android:label="[^"]*"', tag):
+                      newtag = re.sub(r'android:label="[^"]*"', 'android:label="GRUPO BIGGER"', tag, count=1)
+                  else:
+                      newtag = tag[:-1] + ' android:label="GRUPO BIGGER">'
+                  s = s[:m.start()] + newtag + s[m.end():]
+                  manifest.write_text(s, encoding='utf-8')
+
+          print(f'Arquivos de texto alterados: {changed}')
+          PY
+
+      - name: Aplicar visual azul e logos GRUPO BIGGER
+        shell: bash
+        run: |
+          set -e
+          python3 <<'PY'
+          from pathlib import Path
+          from PIL import Image, ImageDraw, ImageFont, ImageFilter
+          import hashlib, math, os
+
+          root = Path('work')
+          banner_file = Path('banner_grupo_bigger.png')
+
+          # Hashes dos recursos de marca encontrados no APK original enviado.
+          logo_hashes = {
+              '856d9ab476c7e5cef0409af314fedb9814b77ce0b9cb37af9598549bbfdf7763', # 1000x412
+              '58fd140b10b2eb8ca37f3c6c3212cfb38333ea1f3473f477f90a62e3e49a3c50', # 1122x1122
+              'a844c1e13c8abe2557e24fbaa45721e6ae4bbd427ac66df4929d178643346581', # 1122x1122
+              'a884ff6ec152d189358281594e6501dfaebb4f0e085a901b408594fa5698f5aa', # 320x180
+          }
+
+          def sha(p):
+              h=hashlib.sha256()
+              with open(p,'rb') as f:
+                  for ch in iter(lambda:f.read(1024*1024), b''):
+                      h.update(ch)
+              return h.hexdigest()
+
+          def font(size, bold=False):
+              candidates = [
+                  '/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf' if bold else '/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf',
+                  '/usr/share/fonts/truetype/liberation2/LiberationSans-Bold.ttf' if bold else '/usr/share/fonts/truetype/liberation2/LiberationSans-Regular.ttf',
+              ]
+              for f in candidates:
+                  if os.path.exists(f): return ImageFont.truetype(f, size)
+              return ImageFont.load_default()
+
+          def make_brand(w,h):
+              # Se o banner aprovado estiver no repo, ele é a base do recurso.
+              if banner_file.exists():
+                  src = Image.open(banner_file).convert('RGB')
+                  sw,sh=src.size
+                  scale=max(w/sw,h/sh)
+                  nw,nh=int(sw*scale),int(sh*scale)
+                  src=src.resize((nw,nh), Image.Resampling.LANCZOS)
+                  left=(nw-w)//2; top=(nh-h)//2
+                  out=src.crop((left,top,left+w,top+h)).convert('RGBA')
+                  # Escurece levemente para manter leitura no login.
+                  shade=Image.new('RGBA',(w,h),(0,10,35,45))
+                  return Image.alpha_composite(out,shade)
+
+              # Fallback: arte azul premium gerada no próprio build.
+              out=Image.new('RGBA',(w,h),(2,12,40,255))
+              px=out.load()
+              for y in range(h):
+                  for x in range(w):
+                      t=(x+y)/(w+h)
+                      px[x,y]=(2, int(18+28*t), int(58+90*t), 255)
+              d=ImageDraw.Draw(out)
+              for k in range(5):
+                  yy=int(h*(0.18+k*0.16))
+                  d.arc((-w//3, yy-h//2, int(w*1.3), yy+h//2), 200, 345, fill=(25,130,255,90), width=max(1,h//120))
+              f1=font(max(18,int(h*0.18)), True)
+              f2=font(max(13,int(h*0.075)), True)
+              title='GRUPO BIGGER'
+              sub='ENTRETENIMENTO PREMIUM'
+              bb=d.textbbox((0,0),title,font=f1); tw=bb[2]-bb[0]; th=bb[3]-bb[1]
+              x=(w-tw)//2; y=int(h*0.38-th/2)
+              d.text((x+2,y+2),title,font=f1,fill=(0,0,0,120))
+              d.text((x,y),title,font=f1,fill=(245,248,255,255))
+              bb=d.textbbox((0,0),sub,font=f2); tw=bb[2]-bb[0]
+              d.text(((w-tw)//2,int(h*0.66)),sub,font=f2,fill=(93,190,255,255))
+              return out
+
+          replaced=[]
+          for p in root.rglob('*'):
+              if not p.is_file(): continue
+              try:
+                  hsh=sha(p)
+              except Exception:
+                  continue
+              if hsh not in logo_hashes: continue
+              try:
+                  im=Image.open(p)
+                  w,h=im.size
+                  out=make_brand(w,h)
+                  # Mantém PNG mesmo se a extensão original for ofuscada (.aac etc.).
+                  out.save(p, format='PNG', optimize=True)
+                  replaced.append(str(p))
+              except Exception as e:
+                  print('Falha ao trocar',p,e)
+
+          # Tema: converte apenas cores XML claramente rosa/magenta/vermelhas para azul.
+          # Não toca em verdes/amarelos usados por status.
+          import re
+          def to_blue(hexv):
+              raw=hexv.lstrip('#')
+              if len(raw) not in (6,8): return hexv
+              alpha=''
+              rgb=raw
+              if len(raw)==8:
+                  alpha=raw[:2]; rgb=raw[2:]
+              try:r,g,b=[int(rgb[i:i+2],16) for i in (0,2,4)]
+              except:return hexv
+              # Só cores fortes do eixo rosa/vermelho do tema antigo.
+              if r>150 and (r-g)>55 and (r-b)>25:
+                  nr,ng,nb=20,105,245
+                  return '#'+alpha+f'{nr:02X}{ng:02X}{nb:02X}'
+              return hexv
+
+          color_changes=0
+          for p in root.rglob('*.xml'):
+              if 'res' not in p.parts: continue
+              try:s=p.read_text(encoding='utf-8')
+              except:continue
+              ns=re.sub(r'#[0-9A-Fa-f]{6,8}', lambda m: to_blue(m.group(0)), s)
+              if ns!=s:
+                  p.write_text(ns,encoding='utf-8'); color_changes+=1
+
+          print('Logos substituídos:', len(replaced))
+          for x in replaced: print(' -',x)
+          print('XMLs com tema azul:', color_changes)
+          if not replaced:
+              print('AVISO: os hashes dos logos não foram encontrados após o decode; o texto ainda será rebatizado.')
+          PY
+
+      - name: Recompilar APK
+        shell: bash
+        run: |
+          set -e
+          mkdir -p output
+          java -jar "$RUNNER_TEMP/apktool.jar" b work -o output/GRUPO-BIGGER-unsigned.apk
+
+      - name: Alinhar e assinar APK
+        shell: bash
+        run: |
+          set -e
+          zipalign -f -p 4 output/GRUPO-BIGGER-unsigned.apk output/GRUPO-BIGGER-aligned.apk
+
+          # Chave local de teste. Para atualizar a mesma instalação entre builds,
+          # use sempre a mesma chave. Esta chave é criada apenas se não existir.
+          if [ ! -f grupo-bigger.keystore ]; then
+            keytool -genkeypair -v \
+              -keystore grupo-bigger.keystore \
+              -storepass bigger2026 \
+              -keypass bigger2026 \
+              -alias grupobigger \
+              -keyalg RSA -keysize 2048 -validity 10000 \
+              -dname "CN=GRUPO BIGGER, OU=Android, O=GRUPO BIGGER, L=Colatina, ST=ES, C=BR"
+          fi
+
+          apksigner sign \
+            --ks grupo-bigger.keystore \
+            --ks-key-alias grupobigger \
+            --ks-pass pass:bigger2026 \
+            --key-pass pass:bigger2026 \
+            --out output/GRUPO-BIGGER-Premium.apk \
+            output/GRUPO-BIGGER-aligned.apk
+
+          apksigner verify --verbose --print-certs output/GRUPO-BIGGER-Premium.apk
+
+      - name: Enviar APK pronto para baixar
+        uses: actions/upload-artifact@v4
+        with:
+          name: GRUPO-BIGGER-Premium
+          path: output/GRUPO-BIGGER-Premium.apk
+          if-no-files-found: error
+          retention-days: 30
