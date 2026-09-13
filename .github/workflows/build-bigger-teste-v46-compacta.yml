@@ -1,0 +1,142 @@
+name: BIGGER TESTE v46 Compacta
+
+on:
+  push:
+    paths:
+      - '.github/workflows/build-bigger-teste-v46-compacta.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Baixar repositorio
+        uses: actions/checkout@v4
+
+      - name: Configurar Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Configurar Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Instalar Android 35
+        run: |
+          yes | sdkmanager --licenses >/dev/null 2>&1 || true
+          sdkmanager "platforms;android-35" "build-tools;35.0.0"
+
+      - name: Configurar Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.7'
+
+      - name: Recuperar projeto da v45
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re, base64
+          p=Path('.github/workflows/build-bigger-teste-v45-horas-backup.yml')
+          s=p.read_text(encoding='utf-8')
+          m=re.search(r"printf '%s' '([A-Za-z0-9+/=]+)' \| base64 -d > projeto\.zip", s)
+          if not m:
+              raise SystemExit('Projeto base da v45 não encontrado')
+          Path('projeto.zip').write_bytes(base64.b64decode(m.group(1)))
+          PY
+          unzip -q projeto.zip
+
+      - name: Aplicar layout compacto v46
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('GeradorTesteIPTV-Ultra/app/src/main/java/com/grupobigger/geradorteste/MainActivity.java')
+          s=p.read_text(encoding='utf-8')
+
+          s=s.replace('b.setTextColor(Color.WHITE); b.setMinHeight(dp(52)); b.setPadding(dp(18),0,dp(18),0);',
+                      'b.setTextColor(Color.WHITE); b.setMinHeight(dp(42)); b.setPadding(dp(12),0,dp(12),0);')
+          s=s.replace('private LinearLayout card(){ LinearLayout c=new LinearLayout(this); c.setOrientation(LinearLayout.VERTICAL); c.setPadding(dp(18),dp(18),dp(18),dp(18));',
+                      'private LinearLayout card(){ LinearLayout c=new LinearLayout(this); c.setOrientation(LinearLayout.VERTICAL); c.setPadding(dp(12),dp(11),dp(12),dp(11));')
+          s=s.replace('v.setPadding(dp(10),dp(6),dp(10),dp(6));', 'v.setPadding(dp(8),dp(4),dp(8),dp(4));')
+          s=s.replace('b.setTextSize(18);', 'b.setTextSize(15);')
+
+          start=s.index('    private void buildUi(){')
+          end=s.index('\n    private JSONArray loadServers(){', start)
+          new='''    private void buildUi(){
+              mainScroll=new ScrollView(this); mainScroll.setFillViewport(true); mainScroll.setBackgroundColor(BG);
+              root=new LinearLayout(this); root.setOrientation(LinearLayout.VERTICAL); root.setPadding(dp(10),dp(8),dp(10),dp(10)); root.setBackgroundColor(BG); mainScroll.addView(root); setContentView(mainScroll);
+
+              LinearLayout hero=card(); hero.setPadding(dp(12),dp(9),dp(10),dp(9));
+              GradientDrawable heroBg=new GradientDrawable(GradientDrawable.Orientation.TL_BR,new int[]{Color.rgb(21,25,53),Color.rgb(9,30,55),Color.rgb(6,47,61)}); heroBg.setCornerRadius(dp(20)); heroBg.setStroke(dp(1),Color.rgb(37,74,103)); hero.setBackground(heroBg);
+              LinearLayout top=new LinearLayout(this); top.setOrientation(LinearLayout.HORIZONTAL); top.setGravity(Gravity.CENTER_VERTICAL);
+              ImageView logo=new ImageView(this); logo.setImageResource(com.grupobigger.geradorteste.R.drawable.app_icon_header); logo.setScaleType(ImageView.ScaleType.FIT_CENTER); logo.setBackgroundColor(Color.TRANSPARENT); top.addView(logo,new LinearLayout.LayoutParams(dp(38),dp(38)));
+              LinearLayout brandWrap=new LinearLayout(this); brandWrap.setOrientation(LinearLayout.VERTICAL); brandWrap.setPadding(dp(9),0,0,0);
+              TextView title=text("Gerador de Testes",20,true); title.setTextColor(Color.WHITE); brandWrap.addView(title);
+              TextView mini=text("GRUPO BIGGER • rápido e seguro",10,true); mini.setLetterSpacing(.04f); mini.setTextColor(CYAN); brandWrap.addView(mini);
+              top.addView(brandWrap,new LinearLayout.LayoutParams(0,-2,1));
+              Button saveApp=iconButton("💾",GREEN); saveApp.setContentDescription("Backup, importar e compartilhar APK"); top.addView(saveApp,new LinearLayout.LayoutParams(dp(40),dp(40))); saveApp.setOnClickListener(v->showSaveMenu()); saveApp.setOnLongClickListener(v->{getSharedPreferences("db",0).edit().remove("github_token").apply();Toast.makeText(this,"Token do GitHub apagado",Toast.LENGTH_SHORT).show();return true;}); hero.addView(top);
+              root.addView(hero,margins(0,7));
+
+              LinearLayout serverCard=card();
+              LinearLayout sh=new LinearLayout(this); sh.setOrientation(LinearLayout.HORIZONTAL); sh.setGravity(Gravity.CENTER_VERTICAL);
+              TextView st=text("Servidores",16,true); sh.addView(st,new LinearLayout.LayoutParams(0,-2,1));
+              serverCount=badge("0 SERVIDORES",CYAN); serverCount.setOnClickListener(v->showAllServersDialog()); sh.addView(serverCount); serverCard.addView(sh);
+              serverBox=new LinearLayout(this); serverBox.setOrientation(LinearLayout.VERTICAL); serverCard.addView(serverBox,margins(6,3));
+              LinearLayout serverActions=new LinearLayout(this); serverActions.setOrientation(LinearLayout.HORIZONTAL);
+              Button addServer=button("＋ Servidor",false); addServer.setTextSize(12); serverActions.addView(addServer,new LinearLayout.LayoutParams(0,dp(40),1)); addServer.setOnClickListener(v->serverDialog(-1));
+              TextView postInfo=text("● POST automático",10,true); postInfo.setTextColor(GREEN); postInfo.setGravity(Gravity.CENTER); LinearLayout.LayoutParams postLp=new LinearLayout.LayoutParams(0,dp(40),1); postLp.leftMargin=dp(6); serverActions.addView(postInfo,postLp);
+              serverCard.addView(serverActions); root.addView(serverCard,margins(0,7));
+
+              LinearLayout tplCard=card();
+              LinearLayout th=new LinearLayout(this); th.setOrientation(LinearLayout.HORIZONTAL); th.setGravity(Gravity.CENTER_VERTICAL); th.addView(text("Mensagens",16,true),new LinearLayout.LayoutParams(0,-2,1)); templateCount=badge("0 MODELOS",CYAN); th.addView(templateCount); tplCard.addView(th);
+              templateBox=new LinearLayout(this); templateBox.setOrientation(LinearLayout.VERTICAL); tplCard.addView(templateBox,margins(5,2));
+              LinearLayout tplActions=new LinearLayout(this); tplActions.setOrientation(LinearLayout.HORIZONTAL);
+              Button allTpl=button("☰ Ver todas",false); allTpl.setTextSize(12); allTpl.setTextColor(CYAN); allTpl.setOnClickListener(v->showAllTemplatesDialog()); tplActions.addView(allTpl,new LinearLayout.LayoutParams(0,dp(40),1));
+              Button addTpl=button("＋ Nova mensagem",false); addTpl.setTextSize(12); LinearLayout.LayoutParams addTplLp=new LinearLayout.LayoutParams(0,dp(40),1); addTplLp.leftMargin=dp(6); tplActions.addView(addTpl,addTplLp); addTpl.setOnClickListener(v->templateDialog(-1));
+              tplCard.addView(tplActions); root.addView(tplCard,margins(0,7));
+
+              LinearLayout bottomActions=new LinearLayout(this); bottomActions.setOrientation(LinearLayout.HORIZONTAL);
+              generateBtn=button("⚡ GERAR TESTE",true); generateBtn.setTextSize(14); bottomActions.addView(generateBtn,new LinearLayout.LayoutParams(0,dp(50),1.35f)); generateBtn.setOnClickListener(v->generateTest());
+              rawBtn=button("⚙️ VARIÁVEIS",false); rawBtn.setTextSize(12); LinearLayout.LayoutParams rawLp=new LinearLayout.LayoutParams(0,dp(50),.85f); rawLp.leftMargin=dp(7); bottomActions.addView(rawBtn,rawLp); rawBtn.setOnClickListener(v->mappingManagerDialog());
+              root.addView(bottomActions,margins(0,3));
+              statusView=text("Tudo pronto para gerar.",10,false); statusView.setTextColor(MUTED); statusView.setGravity(Gravity.CENTER); root.addView(statusView,margins(2,2));
+          }
+          '''
+          s=s[:start]+new+s[end:]
+          s=s.replace('int shown=Math.min(3,order.size());', 'int shown=Math.min(1,order.size());', 1)
+          s=s.replace('''if(order.size()>3){
+              Button all=button("☰  VER TODOS OS SERVIDORES  ("+order.size()+")",false);all.setTextColor(CYAN);all.setOnClickListener(v->showAllServersDialog());serverBox.addView(all,margins(5,5));
+          }''', '')
+          s=s.replace('int shown=Math.min(3,main.length());', 'int shown=Math.min(2,main.length());')
+          s=s.replace('if(a.length()>3){Button all=button("☰  VER TODAS AS MENSAGENS  ("+a.length()+")",false);all.setTextColor(CYAN);all.setOnClickListener(v->showAllTemplatesDialog());templateBox.addView(all,margins(5,5));}', '')
+          s=s.replace('row.setPadding(dp(12),dp(7),dp(10),dp(7));', 'row.setPadding(dp(8),dp(4),dp(7),dp(4));')
+          s=s.replace('text((sel?"✅  ":"○  ")+s.optString("name","Servidor "+(idx+1)),16,true)', 'text((sel?"✅ ":"○ ")+s.optString("name","Servidor "+(idx+1)),14,true)')
+          s=s.replace('new LinearLayout.LayoutParams(0,dp(48),1)', 'new LinearLayout.LayoutParams(0,dp(38),1)')
+          s=s.replace('new LinearLayout.LayoutParams(dp(46),dp(46))', 'new LinearLayout.LayoutParams(dp(38),dp(38))')
+          s=s.replace('new LinearLayout.LayoutParams(dp(6),1)', 'new LinearLayout.LayoutParams(dp(4),1)')
+          s=s.replace('parent.addView(row,margins(0,7));', 'parent.addView(row,margins(0,4));')
+          s=s.replace('text((sel?"✅  ":"○  ")+o.optString("title","Modelo"),16,true)', 'text((sel?"✅ ":"○ ")+o.optString("title","Modelo"),14,true)')
+          p.write_text(s,encoding='utf-8')
+          print('V46 compacta aplicada')
+          PY
+
+      - name: Compilar APK
+        run: |
+          cd GeradorTesteIPTV-Ultra
+          gradle :app:assembleDebug --stacktrace
+
+      - name: Preparar APK
+        run: cp GeradorTesteIPTV-Ultra/app/build/outputs/apk/debug/app-debug.apk BIGGER-TESTE-v46-COMPACTA.apk
+
+      - name: Enviar APK pronto
+        uses: actions/upload-artifact@v4
+        with:
+          name: BIGGER-TESTE-v46-COMPACTA
+          path: BIGGER-TESTE-v46-COMPACTA.apk
+          retention-days: 30
