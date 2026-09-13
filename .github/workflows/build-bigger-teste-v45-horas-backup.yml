@@ -1,0 +1,120 @@
+name: BIGGER TESTE v45 Horas Backup
+
+on:
+  push:
+    paths:
+      - '.github/workflows/build-bigger-teste-v45-horas-backup.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Baixar repositorio
+        uses: actions/checkout@v4
+
+      - name: Configurar Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Configurar Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Instalar Android 35
+        run: |
+          yes | sdkmanager --licenses >/dev/null 2>&1 || true
+          sdkmanager "platforms;android-35" "build-tools;35.0.0"
+
+      - name: Configurar Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.7'
+
+      - name: Recuperar projeto da v43
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re, base64
+          p=Path('.github/workflows/build-apk-leve-v43-texto-completo-corrigido.yml')
+          s=p.read_text(encoding='utf-8')
+          m=re.search(r"printf '%s' '([A-Za-z0-9+/=]+)' \| base64 -d > projeto\.zip",s)
+          if not m:
+              raise SystemExit('Payload do projeto v43 não encontrado')
+          Path('projeto.zip').write_bytes(base64.b64decode(m.group(1)))
+          PY
+          unzip -q projeto.zip
+          cp -a GeradorTesteIPTV-Ultra/. .
+
+      - name: Aplicar variável horas e correção de backup antigo
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('app/src/main/java/com/grupobigger/geradorteste/MainActivity.java')
+          s=p.read_text(encoding='utf-8')
+
+          # Garante a variável em instalações já existentes.
+          marker='        saveVariables(a);return a;\n    }\n    private void saveVariables(){saveVariables(variables);}'
+          if '"horas_teste"' not in s:
+              insert='''        boolean hasHours=false;\n        for(int i=0;i<a.length();i++){JSONObject v=a.optJSONObject(i);if(v!=null&&"horas_teste".equals(cleanToken(v.optString("token")))){hasHours=true;break;}}\n        if(!hasHours)a.put(var("horas_teste","Quantidade de horas do teste","app","horas_teste"));\n\n'''
+              if marker not in s:
+                  raise SystemExit('Ponto loadVariables não encontrado')
+              s=s.replace(marker,insert+marker,1)
+
+          # Garante que a variável exista no conjunto padrão.
+          dur='        a.put(var("duracao","Duração","app","duracao"));\n'
+          hrs='        a.put(var("horas_teste","Quantidade de horas do teste","app","horas_teste"));\n'
+          if hrs not in s:
+              if dur not in s: raise SystemExit('Ponto defaultVariables não encontrado')
+              s=s.replace(dur,dur+hrs,1)
+
+          # Resolve {horas_teste}: 1 hora / 2 horas / 3 horas...
+          dur_res='            if("duracao".equals(source)){String start=find(data,new String[]{"createdAt","created_at","createdAtFormatted"});String end=find(data,new String[]{"expiresAt","expires_at","expiresAtFormatted","vencimento","validade"});return calculateDurationBetween(start,end);}\n'
+          hrs_res='            if("horas_teste".equals(source)){String start=find(data,new String[]{"createdAt","created_at","createdAtFormatted"});String end=find(data,new String[]{"expiresAt","expires_at","expiresAtFormatted","vencimento","validade"});return calculateHoursBetween(start,end);}\n'
+          if hrs_res not in s:
+              if dur_res not in s: raise SystemExit('Ponto resolveVariable não encontrado')
+              s=s.replace(dur_res,dur_res+hrs_res,1)
+
+          calc='    private String calculateHoursBetween(String start,String end){try{Date a=parseAnyDate(start),b=parseAnyDate(end);if(a==null||b==null)return null;long diff=Math.max(0,b.getTime()-a.getTime());long hours=diff/3600000L;if(hours==1)return "1 hora";return hours+" horas";}catch(Exception e){return null;}}\n'
+          parse='    private Date parseAnyDate(String s){'
+          if 'private String calculateHoursBetween' not in s:
+              if parse not in s: raise SystemExit('Ponto de cálculo não encontrado')
+              s=s.replace(parse,calc+parse,1)
+
+          # CORREÇÃO PRINCIPAL: ao restaurar backup antigo, não deixa a variável sumir.
+          old='                            servers=fServers;templates=fTemplates;variables=fVariables;\n'
+          new='                            servers=fServers;templates=fTemplates;variables=ensureHoursVariable(fVariables);\n'
+          if old in s:
+              s=s.replace(old,new,1)
+          elif 'variables=ensureHoursVariable(fVariables);' not in s:
+              raise SystemExit('Ponto de importação não encontrado')
+
+          helper='''    private JSONArray ensureHoursVariable(JSONArray a){\n        if(a==null)a=new JSONArray();\n        boolean has=false;\n        for(int i=0;i<a.length();i++){JSONObject v=a.optJSONObject(i);if(v!=null&&"horas_teste".equals(cleanToken(v.optString("token")))){has=true;break;}}\n        if(!has)a.put(var("horas_teste","Quantidade de horas do teste","app","horas_teste"));\n        return a;\n    }\n'''
+          hook='    private void exportConfiguredApk(){\n'
+          if 'private JSONArray ensureHoursVariable' not in s:
+              if hook not in s: raise SystemExit('Ponto helper não encontrado')
+              s=s.replace(hook,helper+'\n'+hook,1)
+
+          p.write_text(s,encoding='utf-8')
+          print('Patch v45 aplicado com sucesso')
+          PY
+
+      - name: Compilar APK
+        run: gradle :app:assembleDebug --stacktrace
+
+      - name: Preparar APK
+        run: cp app/build/outputs/apk/debug/app-debug.apk BIGGER-TESTE-v45-HORAS-BACKUP.apk
+
+      - name: Enviar APK pronto
+        uses: actions/upload-artifact@v4
+        with:
+          name: BIGGER-TESTE-v45-HORAS-BACKUP
+          path: BIGGER-TESTE-v45-HORAS-BACKUP.apk
+          if-no-files-found: error
+          retention-days: 30
