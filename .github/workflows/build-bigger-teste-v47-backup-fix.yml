@@ -1,0 +1,88 @@
+name: BIGGER TESTE v47 Backup FIX
+
+on:
+  push:
+    paths:
+      - '.github/workflows/build-bigger-teste-v47-backup-fix.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Baixar repositorio
+        uses: actions/checkout@v4
+      - name: Configurar Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Configurar Android SDK
+        uses: android-actions/setup-android@v3
+      - name: Instalar Android 35
+        run: |
+          yes | sdkmanager --licenses >/dev/null 2>&1 || true
+          sdkmanager "platforms;android-35" "build-tools;35.0.0"
+      - name: Configurar Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.7'
+      - name: Recuperar e aplicar v46
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re,base64,textwrap
+          s=Path('.github/workflows/build-apk-leve-v43-texto-completo-corrigido.yml').read_text(encoding='utf-8')
+          m=re.search(r"printf '%s' '([A-Za-z0-9+/=]+)' \| base64 -d > projeto\.zip",s)
+          if not m: raise SystemExit('Payload v43 não encontrado')
+          Path('projeto.zip').write_bytes(base64.b64decode(m.group(1)))
+          PY
+          unzip -q projeto.zip
+          python3 - <<'PY'
+          from pathlib import Path
+          import re,textwrap
+          def extrair(path,nome_step):
+              y=Path(path).read_text(encoding='utf-8')
+              pos=y.find('- name: '+nome_step)
+              if pos<0: raise SystemExit('Step não encontrado: '+nome_step)
+              trecho=y[pos:]
+              m=re.search(r"python3 - <<'PY'\n(.*?)\n\s+PY",trecho,re.S)
+              if not m: raise SystemExit('Python não encontrado')
+              return textwrap.dedent(m.group(1))
+          c45=extrair('.github/workflows/build-bigger-teste-v45-horas-backup.yml','Aplicar variável horas e correção de backup antigo')
+          c45=c45.replace("p=Path('app/src/main/java/com/grupobigger/geradorteste/MainActivity.java')","p=Path('GeradorTesteIPTV-Ultra/app/src/main/java/com/grupobigger/geradorteste/MainActivity.java')")
+          exec(compile(c45,'p45','exec'),{})
+          c46=extrair('.github/workflows/build-bigger-teste-v46-compacta.yml','Aplicar layout compacto v46')
+          exec(compile(c46,'p46','exec'),{})
+          PY
+      - name: Diagnosticar backup
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('GeradorTesteIPTV-Ultra/app/src/main/java/com/grupobigger/geradorteste/MainActivity.java')
+          s=p.read_text(encoding='utf-8')
+          lines=s.splitlines()
+          for i,l in enumerate(lines):
+              if 'backup' in l.lower() or 'vazio' in l.lower() or 'export' in l.lower() or 'share' in l.lower():
+                  a=max(0,i-3); b=min(len(lines),i+5)
+                  print('\n--- contexto linha',i+1,'---')
+                  for j in range(a,b): print(f'{j+1}: {lines[j]}')
+          PY
+      - name: Compilar APK diagnostico
+        run: |
+          cd GeradorTesteIPTV-Ultra
+          gradle :app:assembleDebug --stacktrace
+      - name: Preparar APK
+        run: cp GeradorTesteIPTV-Ultra/app/build/outputs/apk/debug/app-debug.apk BIGGER-TESTE-v47-DIAG.apk
+      - name: Enviar APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: BIGGER-TESTE-v47-DIAG
+          path: BIGGER-TESTE-v47-DIAG.apk
+          retention-days: 7
