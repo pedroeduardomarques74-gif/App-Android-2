@@ -1,4 +1,4 @@
-name: BIGGER TESTE v47 Backup FIX
+name: BIGGER TESTE v47 Backup Corrigido
 
 on:
   push:
@@ -60,29 +60,54 @@ jobs:
           c46=extrair('.github/workflows/build-bigger-teste-v46-compacta.yml','Aplicar layout compacto v46')
           exec(compile(c46,'p46','exec'),{})
           PY
-      - name: Diagnosticar backup
+      - name: Corrigir exportação e compartilhamento do backup
         shell: bash
         run: |
           python3 - <<'PY'
           from pathlib import Path
           p=Path('GeradorTesteIPTV-Ultra/app/src/main/java/com/grupobigger/geradorteste/MainActivity.java')
           s=p.read_text(encoding='utf-8')
-          lines=s.splitlines()
-          for i,l in enumerate(lines):
-              if 'backup' in l.lower() or 'vazio' in l.lower() or 'export' in l.lower() or 'share' in l.lower():
-                  a=max(0,i-3); b=min(len(lines),i+5)
-                  print('\n--- contexto linha',i+1,'---')
-                  for j in range(a,b): print(f'{j+1}: {lines[j]}')
+          old='''        if(requestCode==REQ_EXPORT_CONFIG){
+            try(OutputStream os=getContentResolver().openOutputStream(uri)){
+                if(os==null)throw new IOException("Arquivo não disponível");
+                os.write(buildConfigJson().toString(2).getBytes(StandardCharsets.UTF_8));
+                os.flush();
+                Toast.makeText(this,"✅ Configurações exportadas",Toast.LENGTH_LONG).show();
+            }catch(Exception e){Toast.makeText(this,"Falha ao exportar: "+e.getMessage(),Toast.LENGTH_LONG).show();}
+        }else if(requestCode==REQ_IMPORT_CONFIG){'''
+          new='''        if(requestCode==REQ_EXPORT_CONFIG){
+            try{
+                byte[] backup=buildConfigJson().toString(2).getBytes(StandardCharsets.UTF_8);
+                if(backup.length==0)throw new IOException("Backup vazio");
+                try(OutputStream os=getContentResolver().openOutputStream(uri,"rwt")){
+                    if(os==null)throw new IOException("Arquivo não disponível");
+                    os.write(backup);
+                    os.flush();
+                }
+                Intent share=new Intent(Intent.ACTION_SEND);
+                share.setType("application/json");
+                share.putExtra(Intent.EXTRA_STREAM,uri);
+                share.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+                Toast.makeText(this,"✅ Backup criado ("+backup.length+" bytes)",Toast.LENGTH_SHORT).show();
+                startActivity(Intent.createChooser(share,"Compartilhar backup"));
+            }catch(Exception e){Toast.makeText(this,"Falha ao exportar: "+e.getMessage(),Toast.LENGTH_LONG).show();}
+        }else if(requestCode==REQ_IMPORT_CONFIG){'''
+          if old not in s:
+              raise SystemExit('Bloco de exportação não encontrado')
+          s=s.replace(old,new,1)
+          p.write_text(s,encoding='utf-8')
+          print('Correção v47 aplicada')
           PY
-      - name: Compilar APK diagnostico
+      - name: Compilar APK
         run: |
           cd GeradorTesteIPTV-Ultra
           gradle :app:assembleDebug --stacktrace
       - name: Preparar APK
-        run: cp GeradorTesteIPTV-Ultra/app/build/outputs/apk/debug/app-debug.apk BIGGER-TESTE-v47-DIAG.apk
-      - name: Enviar APK
+        run: cp GeradorTesteIPTV-Ultra/app/build/outputs/apk/debug/app-debug.apk BIGGER-TESTE-v47-BACKUP-CORRIGIDO.apk
+      - name: Enviar APK pronto
         uses: actions/upload-artifact@v4
         with:
-          name: BIGGER-TESTE-v47-DIAG
-          path: BIGGER-TESTE-v47-DIAG.apk
-          retention-days: 7
+          name: BIGGER-TESTE-v47-BACKUP-CORRIGIDO
+          path: BIGGER-TESTE-v47-BACKUP-CORRIGIDO.apk
+          if-no-files-found: error
+          retention-days: 30
