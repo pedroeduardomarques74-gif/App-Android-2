@@ -1,0 +1,122 @@
+name: BIGGER TESTE v47 Backup Corrigido
+
+on:
+  push:
+    paths:
+      - '.github/workflows/build-bigger-teste-v47b-backup-corrigido.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Baixar repositorio
+        uses: actions/checkout@v4
+
+      - name: Configurar Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Configurar Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Instalar Android 35
+        run: |
+          yes | sdkmanager --licenses >/dev/null 2>&1 || true
+          sdkmanager "platforms;android-35" "build-tools;35.0.0"
+
+      - name: Configurar Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.7'
+
+      - name: Recuperar projeto base v43
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re,base64
+          s=Path('.github/workflows/build-apk-leve-v43-texto-completo-corrigido.yml').read_text(encoding='utf-8')
+          m=re.search(r"printf '%s' '([A-Za-z0-9+/=]+)' \| base64 -d > projeto\.zip",s)
+          if not m: raise SystemExit('Payload v43 não encontrado')
+          Path('projeto.zip').write_bytes(base64.b64decode(m.group(1)))
+          PY
+          unzip -q projeto.zip
+
+      - name: Aplicar v45 e layout compacto v46
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re,textwrap
+          def extrair(path, nome_step):
+              y=Path(path).read_text(encoding='utf-8')
+              pos=y.find('- name: '+nome_step)
+              if pos<0: raise SystemExit('Step não encontrado: '+nome_step)
+              trecho=y[pos:]
+              m=re.search(r"python3 - <<'PY'\n(.*?)\n\s+PY",trecho,re.S)
+              if not m: raise SystemExit('Python não encontrado em '+nome_step)
+              return textwrap.dedent(m.group(1))
+          c45=extrair('.github/workflows/build-bigger-teste-v45-horas-backup.yml','Aplicar variável horas e correção de backup antigo')
+          c45=c45.replace("p=Path('app/src/main/java/com/grupobigger/geradorteste/MainActivity.java')","p=Path('GeradorTesteIPTV-Ultra/app/src/main/java/com/grupobigger/geradorteste/MainActivity.java')")
+          exec(compile(c45,'patch_v45','exec'),{})
+          c46=extrair('.github/workflows/build-bigger-teste-v46-compacta.yml','Aplicar layout compacto v46')
+          exec(compile(c46,'patch_v46','exec'),{})
+          print('v45 + v46 aplicadas com sucesso')
+          PY
+
+      - name: Corrigir backup vazio
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('GeradorTesteIPTV-Ultra/app/src/main/java/com/grupobigger/geradorteste/MainActivity.java')
+          s=p.read_text(encoding='utf-8')
+          alvo='''            try(OutputStream os=getContentResolver().openOutputStream(uri)){
+                if(os==null)throw new IOException("Arquivo não disponível");
+                os.write(buildConfigJson().toString(2).getBytes(StandardCharsets.UTF_8));
+                os.flush();
+                Toast.makeText(this,"✅ Configurações exportadas",Toast.LENGTH_LONG).show();
+            }catch(Exception e){Toast.makeText(this,"Falha ao exportar: "+e.getMessage(),Toast.LENGTH_LONG).show();}'''
+          novo='''            try{
+                byte[] backup=buildConfigJson().toString(2).getBytes(StandardCharsets.UTF_8);
+                if(backup.length==0)throw new IOException("Backup vazio");
+                try(OutputStream os=getContentResolver().openOutputStream(uri,"rwt")){
+                    if(os==null)throw new IOException("Arquivo não disponível");
+                    os.write(backup);
+                    os.flush();
+                }
+                Intent share=new Intent(Intent.ACTION_SEND);
+                share.setType("application/json");
+                share.putExtra(Intent.EXTRA_STREAM,uri);
+                share.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+                Toast.makeText(this,"✅ Backup criado: "+backup.length+" bytes",Toast.LENGTH_SHORT).show();
+                startActivity(Intent.createChooser(share,"Compartilhar backup"));
+            }catch(Exception e){Toast.makeText(this,"Falha ao exportar: "+e.getMessage(),Toast.LENGTH_LONG).show();}'''
+          if alvo not in s: raise SystemExit('Trecho de exportação não encontrado')
+          s=s.replace(alvo,novo,1)
+          p.write_text(s,encoding='utf-8')
+          print('Backup corrigido com sucesso')
+          PY
+
+      - name: Compilar APK
+        run: |
+          cd GeradorTesteIPTV-Ultra
+          gradle :app:assembleDebug --stacktrace
+
+      - name: Preparar APK
+        run: cp GeradorTesteIPTV-Ultra/app/build/outputs/apk/debug/app-debug.apk BIGGER-TESTE-v47-BACKUP-CORRIGIDO.apk
+
+      - name: Enviar APK pronto
+        uses: actions/upload-artifact@v4
+        with:
+          name: BIGGER-TESTE-v47-BACKUP-CORRIGIDO
+          path: BIGGER-TESTE-v47-BACKUP-CORRIGIDO.apk
+          if-no-files-found: error
+          retention-days: 30
