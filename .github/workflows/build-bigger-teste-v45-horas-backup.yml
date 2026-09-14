@@ -59,35 +59,30 @@ jobs:
           p=Path('app/src/main/java/com/grupobigger/geradorteste/MainActivity.java')
           s=p.read_text(encoding='utf-8')
 
-          # Garante a variável em instalações já existentes.
           marker='        saveVariables(a);return a;\n    }\n    private void saveVariables(){saveVariables(variables);}'
           if '"horas_teste"' not in s:
               insert='''        boolean hasHours=false;\n        for(int i=0;i<a.length();i++){JSONObject v=a.optJSONObject(i);if(v!=null&&"horas_teste".equals(cleanToken(v.optString("token")))){hasHours=true;break;}}\n        if(!hasHours)a.put(var("horas_teste","Quantidade de horas do teste","app","horas_teste"));\n\n'''
-              if marker not in s:
-                  raise SystemExit('Ponto loadVariables não encontrado')
+              if marker not in s: raise SystemExit('Ponto loadVariables não encontrado')
               s=s.replace(marker,insert+marker,1)
 
-          # Garante que a variável exista no conjunto padrão.
           dur='        a.put(var("duracao","Duração","app","duracao"));\n'
           hrs='        a.put(var("horas_teste","Quantidade de horas do teste","app","horas_teste"));\n'
           if hrs not in s:
               if dur not in s: raise SystemExit('Ponto defaultVariables não encontrado')
               s=s.replace(dur,dur+hrs,1)
 
-          # Resolve {horas_teste}: 1 hora / 2 horas / 3 horas...
           dur_res='            if("duracao".equals(source)){String start=find(data,new String[]{"createdAt","created_at","createdAtFormatted"});String end=find(data,new String[]{"expiresAt","expires_at","expiresAtFormatted","vencimento","validade"});return calculateDurationBetween(start,end);}\n'
           hrs_res='            if("horas_teste".equals(source)){String start=find(data,new String[]{"createdAt","created_at","createdAtFormatted"});String end=find(data,new String[]{"expiresAt","expires_at","expiresAtFormatted","vencimento","validade"});return calculateHoursBetween(start,end);}\n'
           if hrs_res not in s:
               if dur_res not in s: raise SystemExit('Ponto resolveVariable não encontrado')
               s=s.replace(dur_res,dur_res+hrs_res,1)
 
-          calc='    private String calculateHoursBetween(String start,String end){try{Date a=parseAnyDate(start),b=parseAnyDate(end);if(a==null||b==null)return null;long diff=Math.max(0,b.getTime()-a.getTime());long hours=diff/3600000L;if(hours==1)return "1 hora";return hours+" horas";}catch(Exception e){return null;}}\n'
+          calc='    private String calculateHoursBetween(String start,String end){try{Date a=parseAnyDate(start),b=parseAnyDate(end);if(a==null||b==null)return null;long diff=Math.max(0,b.getTime()-a.getTime());long hours=(diff+3599999L)/3600000L;if(diff>0&&hours<1)hours=1;if(hours==1)return "1 hora";return hours+" horas";}catch(Exception e){return null;}}\n'
           parse='    private Date parseAnyDate(String s){'
           if 'private String calculateHoursBetween' not in s:
               if parse not in s: raise SystemExit('Ponto de cálculo não encontrado')
               s=s.replace(parse,calc+parse,1)
 
-          # CORREÇÃO PRINCIPAL: ao restaurar backup antigo, não deixa a variável sumir.
           old='                            servers=fServers;templates=fTemplates;variables=fVariables;\n'
           new='                            servers=fServers;templates=fTemplates;variables=ensureHoursVariable(fVariables);\n'
           if old in s:
@@ -102,19 +97,33 @@ jobs:
               s=s.replace(hook,helper+'\n'+hook,1)
 
           p.write_text(s,encoding='utf-8')
-          print('Patch v45 aplicado com sucesso')
+          print('Patch v45 horas corrigido aplicado')
+          PY
+
+      - name: Alterar ID para instalar separado
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          p=Path('app/build.gradle')
+          s=p.read_text(encoding='utf-8')
+          s,n=re.subn(r'applicationId\s+["\'][^"\']+["\']','applicationId "com.grupobigger.geradorteste.horasfix"',s,count=1)
+          if n!=1: raise SystemExit('applicationId não encontrado')
+          p.write_text(s,encoding='utf-8')
+          print('ID separado aplicado')
           PY
 
       - name: Compilar APK
         run: gradle :app:assembleDebug --stacktrace
 
       - name: Preparar APK
-        run: cp app/build/outputs/apk/debug/app-debug.apk BIGGER-TESTE-v45-HORAS-BACKUP.apk
+        run: cp app/build/outputs/apk/debug/app-debug.apk BIGGER-TESTE-v45-HORAS-FIX-INSTALA.apk
 
       - name: Enviar APK pronto
         uses: actions/upload-artifact@v4
         with:
-          name: BIGGER-TESTE-v45-HORAS-BACKUP
-          path: BIGGER-TESTE-v45-HORAS-BACKUP.apk
+          name: BIGGER-TESTE-v45-HORAS-FIX-INSTALA
+          path: BIGGER-TESTE-v45-HORAS-FIX-INSTALA.apk
           if-no-files-found: error
           retention-days: 30
