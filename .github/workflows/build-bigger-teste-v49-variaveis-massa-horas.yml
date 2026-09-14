@@ -52,18 +52,149 @@ jobs:
       - name: Recuperar projeto v43
         shell: bash
         run: |
-          python3 - <<'PY'
+          python3 - <<'PYBASE'
           from pathlib import Path
           import re, base64
           s=Path('.github/workflows/build-apk-leve-v43-texto-completo-corrigido.yml').read_text(encoding='utf-8')
           m=re.search(r"printf '%s' '([A-Za-z0-9+/=]+)' \| base64 -d > projeto\.zip",s)
           if not m: raise SystemExit('Payload v43 nao encontrado')
           Path('projeto.zip').write_bytes(base64.b64decode(m.group(1)))
-          PY
+          PYBASE
           unzip -q projeto.zip
           cp -a GeradorTesteIPTV-Ultra/. .
 
-      - name: Aplicar v49
+      - name: Aplicar base v45 de horas e backup
         shell: bash
         run: |
-          printf '%s' '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[... ELLIPSIZATION ...]vHURlQTQHCH8r6xYOhuleaT29s2v/twRAdxlZ7xSfW9mjVkoVq07C8c+eACEzLBoR1v71UdA0IHIrXr2hSxj79MSLBR0CLiDlROvxl tFa+AMiyqnUN/lBtYHUfyk2KUbJQ65Tc4eN18fH1rWHImy1W2PKPFNSjc11qzj/JT9shu1yia yXsXI1URhWs3XUVbEw2DESp4FmW6iW8WdmN6VUCdnwP2VNd/yhloXDeAf2vdXgWl65NlbWPw0zGq4yhgCqYzyivtr1qomaKl8VBvd0q8DZgIMyCM8BGZv fI2lu1p+WrcH+0k/nQ7PlMiyOToE0vOddHjeWOw4QJ878w4EQGGLHQaq3QS4K0/DqiwepICCxuUTYDBqAFdOxKeWtUif9TgX4bNqt0f2CkJ+xt5kwckOD0G+y2PVbCj1dYTar kHPRt+1GLqmT9tDC342q30w1MxXV0XL7C2LYGZkgBfGzIN5gEhk9ZF kqTewyQzkbI68XCAfGtYBJ2ulwiQPzayZPhAUdCh4VkUTqNDKkoybpBP4qAJM9kpzBoLTopEoSiwTuapEu/ISfFYFoJpqH83RR11V4u/qGpZOJzRUKOq/OgXbApq034V6S1es3Zirw8MXElghjCnPmd+Dc9nRvCA0veClNWKSE T lzKwsuiehRVHgcpSxhZ7t/2N07OugeAutq3rNQmL7no+A0b7ABcF2vduiaz3e6L463tnePn/Ve bmsCVjkPW0NnxI5zfQ1TPz1C297J9fMsHTcucVm6RZH FgDfJVn8Dn1/GYXHW Wdg9hKpz75BW8+PVE9YL8xr pvJ+XSav5qM37CeNxd0w21ivN1slGdZ+UCYwmVmVsNWdRjbfMG8uyO5dtA35m70e7c9k219Xcgv aHWeP2h1rktrnKMO nK0ra7a2vTCp/yHJ+o0GjYI67lF50hQ+YstIKxMSKuRY0TDc8Ipzmq3i7ad2mW UYiBqOGc1bEURhDFOQMqkyTcbkQUeZuN5GWQi8Fso1GwtPsTpaXBnyjpkE/Jpj4T1liZjdiYZ4XNC9R83B1NzoJG88Gayr5bc7P+7DfOC2gJJ8IJS G WFFh/QYR1+Z97vsk+bQ6ntZp1dm0srzy79BFhB/Q454MJPN TKRNYu06uUckOstcfQlHHnWW/2MG6hI71Z+h68HWVH8W+tMJtAOoOLuij3DLNT46ZOREkFdjzxYAYcN6SGK8t9kVAm d7s1KxLJI6q3b23mUgTg7i0Z5djdUC5h6Iwq+YIolRSLsKHA B U FgUF+zQu5981eB3+dX0J1i3ckmMnYiXbDi6l/UYuzdulapeuCp7dTLeqEt oXKfxnZ/SuOYkS9fd6jlGubJyXXcy1rN+zHNB Rnc4FP3CkXDJ5vmcoS5LyR5ZvZJtC2BxTCbG0OGxJWYsAoU/fr8l+KBu wmItyGtRSfEsy1e+sLoE738i3YFF8mHNeXqGDYh5KLRD6n8HBnOG9yc7vNbAoVqs0Lt3tei gT1a8N7ZcgaN8flSy944yaqIkw0NWGAxZ/FGZP6wNUbGAY4qbZ33gUsORtS6EqeaQY24vjHGO5Rgz4hKLfsdmLc aK89LQC710PCpCUyf8NTMGL7fRmRuHEHtUcazip9Ix1lIPhEqLYVRRVo hPyF8oqLNBfeeHWRZ mlyewgLexCBXx6agdtz3C7xY LUNi8dXyks3ts+nI0sCRyMIBnz/MOWwLhW+a75sk4F+eCTsV5/ln8RYf+mp5eyrTOcwKZhnshjPb15Xj7lkz9mW1/9dmQ/AbMJbx79+KOZn7GaMMWIuDDxoVcqwtjAYg3sS7A7Q10RfSYAHg0m12usR3MCJePi7NjXfShpmhteQP74YBp2Nm4wWRiDrpim1qxOuVdiQWSgfv wjy1SH+2SaaVqdCKxwFM1WNs6RnQTP1gvylGs0QXDJ1aOd5rVHw f0Z/F56JyzNEevBxZ4SH45xofM39IwoDVGwNf+AC9DoI3Fzte0yhUdSGdCpJq1Q5Ue0zA0xd3Xt7lSl2AE5Lu2R+lBDZ0oDr6+zbXaV0+TXx66En8Mg9GQ/OS3poyPehYVlxEgN5qWDwOxsK2w6FmQHzM+6Z/5uryEaeUzF6Vidl sqLK2OD5bjLkgVhvoqvW3hCZnXYnFpXkrZcDR0R+9TnX6jkK7hTLdfzXk4GKyL3DnCefgtOg+jly+6xu puuBbTbwo62uFuw0rkUz4C9JSl5pPHrapYFsTc+zcKFX+NyZLq8uttUDX8I2byHNUM6GL8+ef5+jc//fk3P/3FMncvLiNmoBVCzpq pftE0FXzEX4D+zXeoAPjnKtXka2tU0JYwW aenmI3gz iip70I82rhRN0yHDZlAQFtLwScLoBhgPkeGOTXPQ7sTmPTpHixQ2du4qfeP4aRUEHSCytJrqnbmFzIXXedCMgUUGhQ7ZMcRf cjY9bXxADBveG939941/ HN+8O6v8h84L1+uj8frOSB/+xyUqCl5542LLZd3d5fDUGlZKdWKftD/gVJV GcCMUvdGhYqT9ZOcpQ2pzDRO7BM98bnn6Ksj9MmnW+wowStOoRvDyk4Ih605CTLYQsZFhTrXg/do bLswGtMSHHVuHqvG55+Hb9o395SP1RsPztoSf7KufXh/AKvxByvkkPEHbbcGgmopjEon/BLBs8WjGQcdmm43ucafDPtiEk etlLAxy9zI4HFgwY6UDnUMw kdnNyjOmuPgqtHy4VxgLCcgAw1vOSi/e/detODfjs eahR1seG9ldbXln3Ua+ONf4A+s5o/p4b940OKwxwV6h9n5aWUMm4ZPWt4VZkKJkIx54psbOgxFn anPz8rnZ/z5+Enr7dsrTSksq4/L6jAq1YG0GqnKpmvR0NPszdTIYu1OfqRmf9S4iFvur8mB2PZYv+GgnYtPTjrqJjcCdmSeKru9zvwdmkIPD4W78WgU5w2LwxL2+BiWXPi5tBxihVzLy89whToN/O4R0A2jeEQd3LtP8NVqtiwzo2aPVzzWfMXm2sG77qw8dVfo/e46lSy5ldHM3WULm0Jbo22B2F+bc yZ1g+6ZmtD3faNgfway+PbouYbavD+qDhdBz3yDtL1BlWQ85E6bL4tic kQ6SmV/rwo4MLl656AkqByS36+qUcYrgw1LRyTnDxW+I59OA IW5L/v9A8ddGmJkqjDqDClcbWegZIetwRzi4kKId74yAHZXkjvlkEs/Oxjaq8OdTRmhwBl2GpVCD3cIS hpTD0TZKCmfYAg tfkePJXi60bRoZQ3OH390GAWhKG+31HIa8W5UnKWAUTHqpKs/O sjgZRlwPG53iCMHyMAUV/GQ6Nw9pl+qacGNBpb7TBdlt tvAPL oAP0VnWpwsPxLdbKX704Ly75CeeXBdRJ99gRwURadUdgFXlSIkXuOVImxuEgYZZujGPvPmq/7z40fkkNdgHcJuRMHYSfPOEJuph egMk+bNyywGVADvAtohYIlVFt7Tm1AC672dlP3FgAGx4pMOrO zdu/j18Sqs8FNqqNQ E PExFpMYXRQZNzQdWooqTeDY9wRxlIe4l1BywbBN6KTG+yi t5aZw rQQpxuUgb rA4NH9BK t77w1uPcr1nNUvRFsYBHJCCRozPImngbQSbdnrjqzweCWmMdSbp/8HnyA1hiISmB6JcP7JEm aTVhXd++ZUuMC1veOtoONdbzoUvJGcB3m6SqBGRDL9kswShqhDXFyUJD aW5+4AzHnYal3OJL uL+319vsb7/e7v+RdCekmYx1ooLQjeW0yejscLS9v9c82vrkeHuvD7B033uzB7xHmp07SWdIGb/R0vYi4qVsfRK9U0LQG7zGZjAJBjFIh3GUO8mQd2J52EjkYiVDoedOhhhnQla7blgaNvd6/ePN7kH32fYOzncbjcqhDPaW18awMk4S2yaAjxrl i2P5YozyzNca c2LPYuNoEW9qN7afBUlORsB4mgvx6/vY5rdvrRv7GPbVtle1e1yzl4mq3HyfjS2XplyWWSvNRlvDMeN6MysTdkWp0r03FCA svK7znr7qUDR43X36quI+rcdNMS6VyqyUY6Y7M8PUCS2270Y4QOSlItSeoII7P4W/gLqQkjF16lje9Yyrcv9VZyzlixkczlXnSgsZ13gae48/+uMnXyw90UHh0FPUP3kx71uKNWV0uHbrqR4mB0pE7I+rDfs hQPUfWue/niQzWVy2vXJL8vqgT3JgSuSiSYIRg9SiSZZeXZuFqNEcYhKozPbEsT8KkjS5HqfT3IknFfnbnCY/A0Ct0RaL6MF3Nmscjj7ULDqN08RWSqkA9WIK75hV1gh5pyBEgcd4kLCpVXsPI7NsMEqH51FoKQYGrUaHgdKM1dxAQwaVkGppQsRfI6I+wENHQzE20sGsOfcP+8evD/Y8/zI+iW/T6NPt59ueP07hUXSb dpu9nZ1XO91D/QLzDpuHGmqhRB6//fXPv3aOKNoVRgv7a2ZIglEM2YwxXS0ibSd1Po2/+emfPo8xF5rM5DF+9xtK8oF5BzABmkyF1nT1vG1agKPdYERhs0Ng+eUW1I3vF78kM6s4uXj3Nar5YUT7qJ0AxvDd36QsHfDplGxgdFMsl iHh3d86rGHadDD6OobPxv5uN+IjBDohfcwZ8jc/+z+Zp/x4kmLuXrmyUX6aFuQsDzOQowyjcZrBmsInZpgjE2dmPoSZOqAbbZQY6ZuNCw27Zg35VXKepJfJyzRXBvxGvcPoMAh76gIAwOBwmzNnmpMh nra9Pl8rCjGu gAGAJGotKcYFm2M ToyJu1Ozkv/v3zpG2NzK/T0pZkQXM4VjefU19DgvKKjMOcidVNj0MnO7BNutk8u7/GmnTnREiNcxDA1u972ztHd0r05BgiK0I6S5q6WNcXWYzBLPA5YanShWG TGgdhEli012iNbvRb3O1FefM1VyIVtdBG41tFU6mCWVghMGwdQjMo4orgYZQWTS EzQsDnLxt4nDkKI8P2khN1TniY1qDe9sHM0Hqy+AiuGrC2Jp5PmoeHS1weP/MeR5grkX1H OQRnleYrMWGC8cyQANF2M/AbEIT1s44znWIbm4nIHzjdk1ZK4YSWAxWVHkcqQuBvQANH4zgxM2cr0UE897YtDZnTKdh1pXkl3jECid51mQpKVBr2CRxHETA lbql/Mv/zekyh24C+2BapBkBu+sTkym5uKcARA gTBA+0IFA XeYghX5C QNjxPR/EwLlgZntvZrZqOdKdWckFhChB8+40+ifvshmmS3L3bULk0mu/bt/p4vboZ//dfIx7lk+bQzYAeqKqL+XBUbF8OvES4yU+mAfqNoK0utOFHCtNnwCnZw ojbSNr4swpBQLTIbz6DzGdpF2B4bBEJnhDrwMf2wT08PghLyGETVlVmbmHcbrcQP/+/K6uQyEPLkPRokfVA/G1QbkFgFkDt zgEdoasYKEWmrQUtge9I9g474JwhrslcgJazo lGUJvmN2YBNS2AM7yxAImYZHC2VOq712b3NgnbvhrJ2lPC+OoN5kYSqzGanMgCC2E8Zfif8Zid1tP YAl5uI4DDeKXEyMkVmwAGwHNejmRzKkcmC6LwHUSN8NwwcJUsEJQ1pEJA UxOZEgPNC4rH6Va5KHV L747oh/cbZnULP ufoODF6rrdUoHscFjITemqGZ41i+z2zZdLqncHBD8vOYpNNhamf65PCedNZa rdqd/BsHsTYnz6kKFnKh5E4yQoXV3SXW95LbdLYJeaMgMmKjBt4UMdMJU Ug2BQwcTFR6kr37DUgx5VuAA6mcBwBiCagKcNpX+C//CjedJgEV0izhJ44AbME5LD6GeoYJdRtzGYe f/xvnUCS5kaz/7EUXbCJFLnv3/4SEV6JBHHKKyZB/knJZ EAsYwqoyTAXmVZ0iolST7XAk wRgImhDKYGh4pHERNem2SuW+kYZLUEqVUI7nEEUkWIwNGEYxhj bREac7l7ZZBoxRpDswkqcu ktd1IRxo5MJdR1n2qcspBew94VVge4KROxPu6uz1aR9VChXg9RQ MZcmlg5HKfdXlOhZmH7YET9AwAPpB+zl893fIClblJqyZRxVx5camPlfUc aq rjbgJq153ZZ1M0esvHh/RHhNRi/prRkYkU4lScda6e5fuw hstzx6TWdob6U5ALW/jprxr0I5kw5UnT0jQ+BzPdlZnZYR6STXqtNh+jO7MNNLfKnK0cgF8vk59QncsadM52qengJD24HRh0GU+YSPickqLBI8/RBRqMWuuj+Vd+zQw3J8Tw5z5u4v1zBwa9PEweIhnj2d+TE3b9bWy3RS1Ha9OlG2vBEr+7As4QHB8Om9KG01urg lNxdfjKSC+kfxVmnQeI4ROT89QpR0UwbHSB/utGoFSyUmMtgTsr24iKn8co2slMyolTaD24xhDZJc2p3ZTV O272uBaf tH7CWULUY4fx+yhG DobBFoqQ80klD0konUS8lGEU/7aKg7ntvp0BmnlGXkp/Tts3h0uqYqFIbBivnihWALWmwLNOdkVz//3DxJf6cp2Xq1BC2aEki dnQRlOXmRA6pzX6sv1wP9m3H/1t8MsW60jEkrmUZqe551EvXFAKEf9dmLmVTA LWVYFvQxhCeHfbJ+EBDLVYpZ1Su uCFOnWUaMNLg747l1aNwFX/IcRfB9Ai7lO1oBG7XOG+CR eu+qY4fPJH5OyUF3dCqCvJEBfGVbxpr9uR8Nx5QszHZVm1WUywk58H4jfGK0I8G8fsBLsfQYRuKVNvPr+bRYiWI0xrcVxNYNN68Z/FfSCSsfmtCAj8tPoqnmALgDQbNKpeUIBwREv0L1kQxCNt4LsvC1pwVuGdBtP1wHvviWh1nv6tiQHbz n2523XrI/PP89/ SCT rLR42/ A UdwJl7S5ZZnvfZH2PWrDctv71204BHaG274rdvPru3/IX5ve2v3nhUJ18Sz4R57tO3vPHqzTIr4h/Y4LM+NPnCaALlsjE0p6ctf+X+jWceaHPtdhESUOrpTJpj9p3SDZBCq0lERZ6dcRODmmCi+Y1vC0r1JusSmkuj dRWKFrBe1+GqaslePvouTdo1wCbD0qSzAx/MvBC/cRPD5MlKq/y34yX3OliwYz7bsd iLU9RhtPRMfkh t vJn241UmjXXzQQw+rea/+tGPbmOOr8XdLw0/2SD/sRvlm+Oez4J1Ll5uJdKHaCrFpakee? truncated for brevity in this rewrite placeholder not allowed?
+          python3 - <<'PYV45'
+          from pathlib import Path
+          import re,textwrap
+          y=Path('.github/workflows/build-bigger-teste-v45-horas-backup.yml').read_text(encoding='utf-8')
+          pos=y.find('- name: Aplicar variável horas e correção de backup antigo')
+          if pos<0: raise SystemExit('Step v45 nao encontrado')
+          trecho=y[pos:]
+          m=re.search(r"python3 - <<'PY'\n(.*?)\n\s+PY",trecho,re.S)
+          if not m: raise SystemExit('Python v45 nao encontrado')
+          exec(compile(textwrap.dedent(m.group(1)),'patch_v45','exec'),{})
+          print('Base v45 aplicada')
+          PYV45
+
+      - name: Aplicar v49 troca em massa
+        shell: bash
+        run: |
+          python3 - <<'PY49'
+          from pathlib import Path
+          p=Path('app/src/main/java/com/grupobigger/geradorteste/MainActivity.java')
+          s=p.read_text(encoding='utf-8')
+          s=s.replace('private static final String GH_WORKFLOW="build-apk-leve-v43-texto-completo-corrigido.yml";','private static final String GH_WORKFLOW="build-bigger-teste-v49-variaveis-massa-horas.yml";',1)
+          old='''        Button add=button("＋  Adicionar variável",false);content.addView(add,margins(8,5));
+          TextView tip=text("Toque em Adicionar variável, escolha o servidor e depois toque nas informações que deseja usar.",11,false);tip.setTextColor(MUTED);tip.setPadding(dp(2),dp(8),dp(2),dp(8));content.addView(tip);
+          ScrollView sc=new ScrollView(this);sc.setFillViewport(true);sc.addView(content);
+          Runnable refresh=()->refreshVariableManagerList(list);refresh.run();
+          AlertDialog d=new AlertDialog.Builder(this,AlertDialog.THEME_DEVICE_DEFAULT_DARK).setTitle("⚙️ Mapear variáveis").setView(sc).setNegativeButton("FECHAR",null).create();
+          d.setOnShowListener(x->{styleDialog(d);if(d.getWindow()!=null)d.getWindow().setLayout(-1,(int)(getResources().getDisplayMetrics().heightPixels*.88f));});d.show();
+          add.setOnClickListener(v->variableEditorDialog(-1,null,refresh));
+      }
+'''
+          new='''        Button add=button("＋  Adicionar variável",false);content.addView(add,margins(8,5));
+          Button bulk=button("🔄  Trocar variável nas mensagens",false);content.addView(bulk,margins(5,5));
+          TextView tip=text("Você também pode trocar uma variável em todas as mensagens ou selecionar somente as mensagens desejadas.",11,false);tip.setTextColor(MUTED);tip.setPadding(dp(2),dp(8),dp(2),dp(8));content.addView(tip);
+          ScrollView sc=new ScrollView(this);sc.setFillViewport(true);sc.addView(content);
+          Runnable refresh=()->refreshVariableManagerList(list);refresh.run();
+          AlertDialog d=new AlertDialog.Builder(this,AlertDialog.THEME_DEVICE_DEFAULT_DARK).setTitle("⚙️ Mapear variáveis").setView(sc).setNegativeButton("FECHAR",null).create();
+          d.setOnShowListener(x->{styleDialog(d);if(d.getWindow()!=null)d.getWindow().setLayout(-1,(int)(getResources().getDisplayMetrics().heightPixels*.88f));});d.show();
+          add.setOnClickListener(v->variableEditorDialog(-1,null,refresh));
+          bulk.setOnClickListener(v->bulkReplaceVariableDialog());
+      }
+
+      private void bulkReplaceVariableDialog(){
+          if(variables.length()<2){Toast.makeText(this,"Cadastre pelo menos duas variáveis para fazer a troca",Toast.LENGTH_LONG).show();return;}
+          LinearLayout body=new LinearLayout(this);body.setOrientation(LinearLayout.VERTICAL);body.setPadding(dp(18),dp(8),dp(18),dp(18));body.setBackgroundColor(PANEL);
+          ArrayList<String> variableNames=new ArrayList<>();
+          for(int i=0;i<variables.length();i++){JSONObject v=variables.optJSONObject(i);String tk=v==null?"variavel":cleanToken(v.optString("token"));String lb=v==null?"Variável":v.optString("label","Variável");variableNames.add("{"+tk+"}  —  "+lb);}
+          body.addView(fieldLabel("VARIÁVEL ATUAL"));Spinner from=new Spinner(this);from.setAdapter(new ArrayAdapter<>(this,android.R.layout.simple_spinner_dropdown_item,variableNames));body.addView(from);
+          body.addView(fieldLabel("TROCAR POR"));Spinner to=new Spinner(this);to.setAdapter(new ArrayAdapter<>(this,android.R.layout.simple_spinner_dropdown_item,variableNames));if(variables.length()>1)to.setSelection(1);body.addView(to);
+          CheckBox all=new CheckBox(this);all.setText("Selecionar todas as mensagens encontradas");all.setTextColor(TEXT);all.setChecked(true);all.setPadding(0,dp(10),0,dp(4));body.addView(all);
+          TextView title=text("MENSAGENS QUE USAM A VARIÁVEL",12,true);title.setTextColor(CYAN);title.setPadding(0,dp(8),0,dp(5));body.addView(title);
+          LinearLayout matches=new LinearLayout(this);matches.setOrientation(LinearLayout.VERTICAL);body.addView(matches);
+          final ArrayList<CheckBox> checks=new ArrayList<>();final ArrayList<Integer> indexes=new ArrayList<>();
+          Runnable rebuild=()->{
+              matches.removeAllViews();checks.clear();indexes.clear();
+              JSONObject fv=variables.optJSONObject(from.getSelectedItemPosition());String src="{"+cleanToken(fv==null?"":fv.optString("token"))+"}";
+              for(int i=0;i<templates.length();i++){JSONObject t=templates.optJSONObject(i);if(t==null)continue;String txt=t.optString("text","");if(!txt.contains(src))continue;CheckBox cb=new CheckBox(this);cb.setText(t.optString("title","Mensagem "+(i+1)));cb.setTextColor(TEXT);cb.setChecked(all.isChecked());cb.setPadding(dp(4),dp(5),dp(4),dp(5));matches.addView(cb);checks.add(cb);indexes.add(i);}
+              if(checks.isEmpty()){TextView none=text("Nenhuma mensagem usa "+src+".",12,false);none.setTextColor(MUTED);none.setPadding(dp(4),dp(8),0,dp(8));matches.addView(none);}
+          };
+          from.setOnItemSelectedListener(new android.widget.AdapterView.OnItemSelectedListener(){public void onItemSelected(android.widget.AdapterView<?> p,View v,int pos,long id){rebuild.run();}public void onNothingSelected(android.widget.AdapterView<?> p){}});
+          all.setOnCheckedChangeListener((b,c)->{for(CheckBox cb:checks)cb.setChecked(c);});
+          ScrollView sc=new ScrollView(this);sc.setFillViewport(true);sc.addView(body);
+          AlertDialog d=new AlertDialog.Builder(this,AlertDialog.THEME_DEVICE_DEFAULT_DARK).setTitle("🔄 Trocar variável nas mensagens").setView(sc).setPositiveButton("APLICAR TROCA",null).setNegativeButton("CANCELAR",null).create();
+          d.setOnShowListener(x->{styleDialog(d);if(d.getWindow()!=null)d.getWindow().setLayout(-1,(int)(getResources().getDisplayMetrics().heightPixels*.88f));rebuild.run();d.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(v->{
+              int a=from.getSelectedItemPosition(),b=to.getSelectedItemPosition();if(a==b){Toast.makeText(this,"Escolha uma variável diferente para substituir",Toast.LENGTH_SHORT).show();return;}
+              JSONObject av=variables.optJSONObject(a),bv=variables.optJSONObject(b);String src="{"+cleanToken(av==null?"":av.optString("token"))+"}",dst="{"+cleanToken(bv==null?"":bv.optString("token"))+"}";int changed=0;
+              try{for(int k=0;k<checks.size();k++){if(!checks.get(k).isChecked())continue;int idx=indexes.get(k);JSONObject t=templates.optJSONObject(idx);if(t==null)continue;String before=t.optString("text","");String after=before.replace(src,dst);if(!before.equals(after)){t.put("text",after);templates.put(idx,t);changed++;}}saveTemplates();refreshTemplates();Toast.makeText(this,changed+" mensagem(ns) atualizada(s)",Toast.LENGTH_LONG).show();d.dismiss();}catch(Exception e){Toast.makeText(this,"Falha ao trocar variável: "+e.getMessage(),Toast.LENGTH_LONG).show();}
+          });});d.show();
+      }
+'''
+          if old not in s: raise SystemExit('Bloco Mapear variaveis nao encontrado')
+          s=s.replace(old,new,1)
+          p.write_text(s,encoding='utf-8')
+          PY49
+
+      - name: Usar pacote separado v49
+        shell: bash
+        run: |
+          python3 - <<'PYPKG'
+          from pathlib import Path
+          import re
+          p=Path('app/build.gradle')
+          s=p.read_text(encoding='utf-8')
+          s,n=re.subn(r'applicationId\s+["\'][^"\']+["\']','applicationId "com.grupobigger.geradorteste.v49"',s,count=1)
+          if n!=1: raise SystemExit('applicationId nao encontrado')
+          p.write_text(s,encoding='utf-8')
+          PYPKG
+
+      - name: Embutir configuracao compactada no APK
+        if: ${{ inputs.config_gzip_base64 != '' }}
+        shell: bash
+        env:
+          CONFIG_GZIP_B64: ${{ inputs.config_gzip_base64 }}
+        run: |
+          mkdir -p app/src/main/assets
+          printf '%s' "$CONFIG_GZIP_B64" | base64 -d | gzip -dc > app/src/main/assets/default_config.json
+
+      - name: Embutir configuracao antiga no APK
+        if: ${{ inputs.config_gzip_base64 == '' && inputs.config_base64 != '' }}
+        shell: bash
+        env:
+          CONFIG_B64: ${{ inputs.config_base64 }}
+        run: |
+          mkdir -p app/src/main/assets
+          printf '%s' "$CONFIG_B64" | base64 -d > app/src/main/assets/default_config.json
+
+      - name: Compilar APK
+        run: gradle :app:assembleDebug --stacktrace
+
+      - name: Preparar APK base
+        if: ${{ inputs.config_gzip_base64 == '' && inputs.config_base64 == '' }}
+        run: cp app/build/outputs/apk/debug/app-debug.apk BIGGER-TESTE-v49-VARIAVEIS-MASSA-HORAS.apk
+
+      - name: Enviar APK base
+        if: ${{ inputs.config_gzip_base64 == '' && inputs.config_base64 == '' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: BIGGER-TESTE-v49-VARIAVEIS-MASSA-HORAS
+          path: BIGGER-TESTE-v49-VARIAVEIS-MASSA-HORAS.apk
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Preparar APK configurado
+        if: ${{ inputs.config_gzip_base64 != '' || inputs.config_base64 != '' }}
+        run: cp app/build/outputs/apk/debug/app-debug.apk Bigger-Gerador-Testes-Configurado-${{ inputs.build_id }}.apk
+
+      - name: Criar link publico do APK configurado
+        if: ${{ inputs.config_gzip_base64 != '' || inputs.config_base64 != '' }}
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: configurado-${{ inputs.build_id }}
+          name: APK Configurado ${{ inputs.build_id }}
+          files: Bigger-Gerador-Testes-Configurado-${{ inputs.build_id }}.apk
