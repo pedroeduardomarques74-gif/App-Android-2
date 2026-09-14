@@ -1,27 +1,14 @@
-name: BIGGER TESTE v49 - Variaveis em Massa + Horas
+name: BIGGER TESTE v49 Variaveis Massa Horas
 
 on:
   push:
     paths:
       - '.github/workflows/build-bigger-teste-v49-variaveis-massa-horas.yml'
+      - 'bigger-teste-v49.patch'
   workflow_dispatch:
-    inputs:
-      config_gzip_base64:
-        description: 'Configuracao compactada embutida (uso automatico pelo app)'
-        required: false
-        default: ''
-      config_base64:
-        description: 'Configuracao antiga sem compactacao (compatibilidade)'
-        required: false
-        default: ''
-      build_id:
-        description: 'ID do APK configurado'
-        required: false
-        default: ''
 
 permissions:
-  contents: write
-  actions: read
+  contents: read
 
 jobs:
   build:
@@ -52,149 +39,31 @@ jobs:
       - name: Recuperar projeto v43
         shell: bash
         run: |
-          python3 - <<'PYBASE'
+          python3 - <<'PY'
           from pathlib import Path
           import re, base64
           s=Path('.github/workflows/build-apk-leve-v43-texto-completo-corrigido.yml').read_text(encoding='utf-8')
           m=re.search(r"printf '%s' '([A-Za-z0-9+/=]+)' \| base64 -d > projeto\.zip",s)
-          if not m: raise SystemExit('Payload v43 nao encontrado')
+          if not m:
+              raise SystemExit('Payload do projeto v43 nao encontrado')
           Path('projeto.zip').write_bytes(base64.b64decode(m.group(1)))
-          PYBASE
+          PY
           unzip -q projeto.zip
           cp -a GeradorTesteIPTV-Ultra/. .
 
-      - name: Aplicar base v45 de horas e backup
-        shell: bash
-        run: |
-          python3 - <<'PYV45'
-          from pathlib import Path
-          import re,textwrap
-          y=Path('.github/workflows/build-bigger-teste-v45-horas-backup.yml').read_text(encoding='utf-8')
-          pos=y.find('- name: Aplicar variável horas e correção de backup antigo')
-          if pos<0: raise SystemExit('Step v45 nao encontrado')
-          trecho=y[pos:]
-          m=re.search(r"python3 - <<'PY'\n(.*?)\n\s+PY",trecho,re.S)
-          if not m: raise SystemExit('Python v45 nao encontrado')
-          exec(compile(textwrap.dedent(m.group(1)),'patch_v45','exec'),{})
-          print('Base v45 aplicada')
-          PYV45
-
-      - name: Aplicar v49 troca em massa
-        shell: bash
-        run: |
-          python3 - <<'PY49'
-          from pathlib import Path
-          p=Path('app/src/main/java/com/grupobigger/geradorteste/MainActivity.java')
-          s=p.read_text(encoding='utf-8')
-          s=s.replace('private static final String GH_WORKFLOW="build-apk-leve-v43-texto-completo-corrigido.yml";','private static final String GH_WORKFLOW="build-bigger-teste-v49-variaveis-massa-horas.yml";',1)
-          old='''        Button add=button("＋  Adicionar variável",false);content.addView(add,margins(8,5));
-          TextView tip=text("Toque em Adicionar variável, escolha o servidor e depois toque nas informações que deseja usar.",11,false);tip.setTextColor(MUTED);tip.setPadding(dp(2),dp(8),dp(2),dp(8));content.addView(tip);
-          ScrollView sc=new ScrollView(this);sc.setFillViewport(true);sc.addView(content);
-          Runnable refresh=()->refreshVariableManagerList(list);refresh.run();
-          AlertDialog d=new AlertDialog.Builder(this,AlertDialog.THEME_DEVICE_DEFAULT_DARK).setTitle("⚙️ Mapear variáveis").setView(sc).setNegativeButton("FECHAR",null).create();
-          d.setOnShowListener(x->{styleDialog(d);if(d.getWindow()!=null)d.getWindow().setLayout(-1,(int)(getResources().getDisplayMetrics().heightPixels*.88f));});d.show();
-          add.setOnClickListener(v->variableEditorDialog(-1,null,refresh));
-      }
-'''
-          new='''        Button add=button("＋  Adicionar variável",false);content.addView(add,margins(8,5));
-          Button bulk=button("🔄  Trocar variável nas mensagens",false);content.addView(bulk,margins(5,5));
-          TextView tip=text("Você também pode trocar uma variável em todas as mensagens ou selecionar somente as mensagens desejadas.",11,false);tip.setTextColor(MUTED);tip.setPadding(dp(2),dp(8),dp(2),dp(8));content.addView(tip);
-          ScrollView sc=new ScrollView(this);sc.setFillViewport(true);sc.addView(content);
-          Runnable refresh=()->refreshVariableManagerList(list);refresh.run();
-          AlertDialog d=new AlertDialog.Builder(this,AlertDialog.THEME_DEVICE_DEFAULT_DARK).setTitle("⚙️ Mapear variáveis").setView(sc).setNegativeButton("FECHAR",null).create();
-          d.setOnShowListener(x->{styleDialog(d);if(d.getWindow()!=null)d.getWindow().setLayout(-1,(int)(getResources().getDisplayMetrics().heightPixels*.88f));});d.show();
-          add.setOnClickListener(v->variableEditorDialog(-1,null,refresh));
-          bulk.setOnClickListener(v->bulkReplaceVariableDialog());
-      }
-
-      private void bulkReplaceVariableDialog(){
-          if(variables.length()<2){Toast.makeText(this,"Cadastre pelo menos duas variáveis para fazer a troca",Toast.LENGTH_LONG).show();return;}
-          LinearLayout body=new LinearLayout(this);body.setOrientation(LinearLayout.VERTICAL);body.setPadding(dp(18),dp(8),dp(18),dp(18));body.setBackgroundColor(PANEL);
-          ArrayList<String> variableNames=new ArrayList<>();
-          for(int i=0;i<variables.length();i++){JSONObject v=variables.optJSONObject(i);String tk=v==null?"variavel":cleanToken(v.optString("token"));String lb=v==null?"Variável":v.optString("label","Variável");variableNames.add("{"+tk+"}  —  "+lb);}
-          body.addView(fieldLabel("VARIÁVEL ATUAL"));Spinner from=new Spinner(this);from.setAdapter(new ArrayAdapter<>(this,android.R.layout.simple_spinner_dropdown_item,variableNames));body.addView(from);
-          body.addView(fieldLabel("TROCAR POR"));Spinner to=new Spinner(this);to.setAdapter(new ArrayAdapter<>(this,android.R.layout.simple_spinner_dropdown_item,variableNames));if(variables.length()>1)to.setSelection(1);body.addView(to);
-          CheckBox all=new CheckBox(this);all.setText("Selecionar todas as mensagens encontradas");all.setTextColor(TEXT);all.setChecked(true);all.setPadding(0,dp(10),0,dp(4));body.addView(all);
-          TextView title=text("MENSAGENS QUE USAM A VARIÁVEL",12,true);title.setTextColor(CYAN);title.setPadding(0,dp(8),0,dp(5));body.addView(title);
-          LinearLayout matches=new LinearLayout(this);matches.setOrientation(LinearLayout.VERTICAL);body.addView(matches);
-          final ArrayList<CheckBox> checks=new ArrayList<>();final ArrayList<Integer> indexes=new ArrayList<>();
-          Runnable rebuild=()->{
-              matches.removeAllViews();checks.clear();indexes.clear();
-              JSONObject fv=variables.optJSONObject(from.getSelectedItemPosition());String src="{"+cleanToken(fv==null?"":fv.optString("token"))+"}";
-              for(int i=0;i<templates.length();i++){JSONObject t=templates.optJSONObject(i);if(t==null)continue;String txt=t.optString("text","");if(!txt.contains(src))continue;CheckBox cb=new CheckBox(this);cb.setText(t.optString("title","Mensagem "+(i+1)));cb.setTextColor(TEXT);cb.setChecked(all.isChecked());cb.setPadding(dp(4),dp(5),dp(4),dp(5));matches.addView(cb);checks.add(cb);indexes.add(i);}
-              if(checks.isEmpty()){TextView none=text("Nenhuma mensagem usa "+src+".",12,false);none.setTextColor(MUTED);none.setPadding(dp(4),dp(8),0,dp(8));matches.addView(none);}
-          };
-          from.setOnItemSelectedListener(new android.widget.AdapterView.OnItemSelectedListener(){public void onItemSelected(android.widget.AdapterView<?> p,View v,int pos,long id){rebuild.run();}public void onNothingSelected(android.widget.AdapterView<?> p){}});
-          all.setOnCheckedChangeListener((b,c)->{for(CheckBox cb:checks)cb.setChecked(c);});
-          ScrollView sc=new ScrollView(this);sc.setFillViewport(true);sc.addView(body);
-          AlertDialog d=new AlertDialog.Builder(this,AlertDialog.THEME_DEVICE_DEFAULT_DARK).setTitle("🔄 Trocar variável nas mensagens").setView(sc).setPositiveButton("APLICAR TROCA",null).setNegativeButton("CANCELAR",null).create();
-          d.setOnShowListener(x->{styleDialog(d);if(d.getWindow()!=null)d.getWindow().setLayout(-1,(int)(getResources().getDisplayMetrics().heightPixels*.88f));rebuild.run();d.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(v->{
-              int a=from.getSelectedItemPosition(),b=to.getSelectedItemPosition();if(a==b){Toast.makeText(this,"Escolha uma variável diferente para substituir",Toast.LENGTH_SHORT).show();return;}
-              JSONObject av=variables.optJSONObject(a),bv=variables.optJSONObject(b);String src="{"+cleanToken(av==null?"":av.optString("token"))+"}",dst="{"+cleanToken(bv==null?"":bv.optString("token"))+"}";int changed=0;
-              try{for(int k=0;k<checks.size();k++){if(!checks.get(k).isChecked())continue;int idx=indexes.get(k);JSONObject t=templates.optJSONObject(idx);if(t==null)continue;String before=t.optString("text","");String after=before.replace(src,dst);if(!before.equals(after)){t.put("text",after);templates.put(idx,t);changed++;}}saveTemplates();refreshTemplates();Toast.makeText(this,changed+" mensagem(ns) atualizada(s)",Toast.LENGTH_LONG).show();d.dismiss();}catch(Exception e){Toast.makeText(this,"Falha ao trocar variável: "+e.getMessage(),Toast.LENGTH_LONG).show();}
-          });});d.show();
-      }
-'''
-          if old not in s: raise SystemExit('Bloco Mapear variaveis nao encontrado')
-          s=s.replace(old,new,1)
-          p.write_text(s,encoding='utf-8')
-          PY49
-
-      - name: Usar pacote separado v49
-        shell: bash
-        run: |
-          python3 - <<'PYPKG'
-          from pathlib import Path
-          import re
-          p=Path('app/build.gradle')
-          s=p.read_text(encoding='utf-8')
-          s,n=re.subn(r'applicationId\s+["\'][^"\']+["\']','applicationId "com.grupobigger.geradorteste.v49"',s,count=1)
-          if n!=1: raise SystemExit('applicationId nao encontrado')
-          p.write_text(s,encoding='utf-8')
-          PYPKG
-
-      - name: Embutir configuracao compactada no APK
-        if: ${{ inputs.config_gzip_base64 != '' }}
-        shell: bash
-        env:
-          CONFIG_GZIP_B64: ${{ inputs.config_gzip_base64 }}
-        run: |
-          mkdir -p app/src/main/assets
-          printf '%s' "$CONFIG_GZIP_B64" | base64 -d | gzip -dc > app/src/main/assets/default_config.json
-
-      - name: Embutir configuracao antiga no APK
-        if: ${{ inputs.config_gzip_base64 == '' && inputs.config_base64 != '' }}
-        shell: bash
-        env:
-          CONFIG_B64: ${{ inputs.config_base64 }}
-        run: |
-          mkdir -p app/src/main/assets
-          printf '%s' "$CONFIG_B64" | base64 -d > app/src/main/assets/default_config.json
+      - name: Aplicar melhorias v49
+        run: patch -p0 < bigger-teste-v49.patch
 
       - name: Compilar APK
         run: gradle :app:assembleDebug --stacktrace
 
-      - name: Preparar APK base
-        if: ${{ inputs.config_gzip_base64 == '' && inputs.config_base64 == '' }}
+      - name: Preparar APK
         run: cp app/build/outputs/apk/debug/app-debug.apk BIGGER-TESTE-v49-VARIAVEIS-MASSA-HORAS.apk
 
-      - name: Enviar APK base
-        if: ${{ inputs.config_gzip_base64 == '' && inputs.config_base64 == '' }}
+      - name: Enviar APK pronto
         uses: actions/upload-artifact@v4
         with:
           name: BIGGER-TESTE-v49-VARIAVEIS-MASSA-HORAS
           path: BIGGER-TESTE-v49-VARIAVEIS-MASSA-HORAS.apk
           if-no-files-found: error
           retention-days: 30
-
-      - name: Preparar APK configurado
-        if: ${{ inputs.config_gzip_base64 != '' || inputs.config_base64 != '' }}
-        run: cp app/build/outputs/apk/debug/app-debug.apk Bigger-Gerador-Testes-Configurado-${{ inputs.build_id }}.apk
-
-      - name: Criar link publico do APK configurado
-        if: ${{ inputs.config_gzip_base64 != '' || inputs.config_base64 != '' }}
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: configurado-${{ inputs.build_id }}
-          name: APK Configurado ${{ inputs.build_id }}
-          files: Bigger-Gerador-Testes-Configurado-${{ inputs.build_id }}.apk
