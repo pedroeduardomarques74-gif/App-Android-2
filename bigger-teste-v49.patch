@@ -1,0 +1,125 @@
+--- app/src/main/java/com/grupobigger/geradorteste/MainActivity.java
++++ app/src/main/java/com/grupobigger/geradorteste/MainActivity.java
+@@ -198,6 +198,10 @@
+         android.content.SharedPreferences db=getSharedPreferences("db",0);
+         boolean userDeletedFull=db.getBoolean("texto_completo_user_deleted",false);
+         if(!hasFull&&!userDeletedFull)a.put(var("texto_completo","Texto completo do servidor","json","reply"));
++        boolean hasHours=false;
++        for(int i=0;i<a.length();i++){JSONObject v=a.optJSONObject(i);if(v!=null&&"horas_teste".equals(cleanToken(v.optString("token")))){hasHours=true;break;}}
++        if(!hasHours)a.put(var("horas_teste","Quantidade de horas do teste","app","horas_teste"));
++
+         saveVariables(a);return a;
+     }
+     private void saveVariables(){saveVariables(variables);}
+@@ -213,6 +217,7 @@
+         a.put(var("validade","Validade","json","expiresAtFormatted,expiresAt,expires_at,vencimento,validade"));
+         a.put(var("vencimento","Vencimento","json","expiresAtFormatted,expiresAt,expires_at,vencimento,validade"));
+         a.put(var("duracao","Duração","app","duracao"));
++        a.put(var("horas_teste","Quantidade de horas do teste","app","horas_teste"));
+         a.put(var("adulto","Com/Sem adulto","app","adulto"));
+         a.put(var("conexoes","Conexões","json","connections,conexoes,conexões"));
+         a.put(var("checkout","Assinar / Renovar","json","payUrl,pay_url,checkout"));
+@@ -432,7 +437,7 @@
+ 
+     private static final String GH_OWNER="pedroeduardomarques74-gif";
+     private static final String GH_REPO="App-Android-2";
+-    private static final String GH_WORKFLOW="build-apk-leve-v43-texto-completo-corrigido.yml";
++    private static final String GH_WORKFLOW="build-bigger-teste-v49-variaveis-massa-horas.yml";
+     private static final String GH_BRANCH="principal";
+ 
+     private JSONObject buildConfigJson() throws JSONException {
+@@ -511,7 +516,7 @@
+                         .setTitle("Importar configurações?")
+                         .setMessage("Isso substituirá os servidores, mensagens e variáveis atuais pelos dados deste arquivo.")
+                         .setPositiveButton("IMPORTAR",(a,b)->{
+-                            servers=fServers;templates=fTemplates;variables=fVariables;
++                            servers=fServers;templates=fTemplates;variables=ensureHoursVariable(fVariables);
+                             selectedServer=(servers.length()==0?-1:Math.max(0,Math.min(fSelectedServer,servers.length()-1)));
+                             selectedTemplate=fSelectedTemplate;noAdult=fNoAdult;lastMessage="";
+                             saveServers();saveTemplates();saveVariables();
+@@ -523,6 +528,14 @@
+         }
+     }
+ 
++    private JSONArray ensureHoursVariable(JSONArray a){
++        if(a==null)a=new JSONArray();
++        boolean has=false;
++        for(int i=0;i<a.length();i++){JSONObject v=a.optJSONObject(i);if(v!=null&&"horas_teste".equals(cleanToken(v.optString("token")))){has=true;break;}}
++        if(!has)a.put(var("horas_teste","Quantidade de horas do teste","app","horas_teste"));
++        return a;
++    }
++
+     private void exportConfiguredApk(){
+         String token=getSharedPreferences("db",0).getString("github_token","").trim();
+         if(token.isEmpty()){showGithubTokenDialog();return;}
+@@ -621,12 +634,42 @@
+         TextView info=text("Crie, edite ou apague variáveis. Para mapear, escolha um servidor, gere a resposta e toque na informação que deseja usar.",12,false);info.setTextColor(MUTED);info.setPadding(0,0,0,dp(10));content.addView(info);
+         LinearLayout list=new LinearLayout(this);list.setOrientation(LinearLayout.VERTICAL);content.addView(list);
+         Button add=button("＋  Adicionar variável",false);content.addView(add,margins(8,5));
+-        TextView tip=text("Toque em Adicionar variável, escolha o servidor e depois toque nas informações que deseja usar.",11,false);tip.setTextColor(MUTED);tip.setPadding(dp(2),dp(8),dp(2),dp(8));content.addView(tip);
++        Button bulk=button("🔄  Trocar variável nas mensagens",false);content.addView(bulk,margins(5,5));
++        TextView tip=text("Você também pode trocar uma variável em todas as mensagens ou selecionar somente as mensagens desejadas.",11,false);tip.setTextColor(MUTED);tip.setPadding(dp(2),dp(8),dp(2),dp(8));content.addView(tip);
+         ScrollView sc=new ScrollView(this);sc.setFillViewport(true);sc.addView(content);
+         Runnable refresh=()->refreshVariableManagerList(list);refresh.run();
+         AlertDialog d=new AlertDialog.Builder(this,AlertDialog.THEME_DEVICE_DEFAULT_DARK).setTitle("⚙️ Mapear variáveis").setView(sc).setNegativeButton("FECHAR",null).create();
+         d.setOnShowListener(x->{styleDialog(d);if(d.getWindow()!=null)d.getWindow().setLayout(-1,(int)(getResources().getDisplayMetrics().heightPixels*.88f));});d.show();
+         add.setOnClickListener(v->variableEditorDialog(-1,null,refresh));
++        bulk.setOnClickListener(v->bulkReplaceVariableDialog());
++    }
++
++    private void bulkReplaceVariableDialog(){
++        if(variables.length()<2){Toast.makeText(this,"Cadastre pelo menos duas variáveis para fazer a troca",Toast.LENGTH_LONG).show();return;}
++        LinearLayout body=new LinearLayout(this);body.setOrientation(LinearLayout.VERTICAL);body.setPadding(dp(18),dp(8),dp(18),dp(18));body.setBackgroundColor(PANEL);
++        ArrayList<String> variableNames=new ArrayList<>();
++        for(int i=0;i<variables.length();i++){JSONObject v=variables.optJSONObject(i);String tk=v==null?"variavel":cleanToken(v.optString("token"));String lb=v==null?"Variável":v.optString("label","Variável");variableNames.add("{"+tk+"}  —  "+lb);}
++        body.addView(fieldLabel("VARIÁVEL ATUAL"));Spinner from=new Spinner(this);from.setAdapter(new ArrayAdapter<>(this,android.R.layout.simple_spinner_dropdown_item,variableNames));body.addView(from);
++        body.addView(fieldLabel("TROCAR POR"));Spinner to=new Spinner(this);to.setAdapter(new ArrayAdapter<>(this,android.R.layout.simple_spinner_dropdown_item,variableNames));if(variables.length()>1)to.setSelection(1);body.addView(to);
++        CheckBox all=new CheckBox(this);all.setText("Selecionar todas as mensagens encontradas");all.setTextColor(TEXT);all.setChecked(true);all.setPadding(0,dp(10),0,dp(4));body.addView(all);
++        TextView title=text("MENSAGENS QUE USAM A VARIÁVEL",12,true);title.setTextColor(CYAN);title.setPadding(0,dp(8),0,dp(5));body.addView(title);
++        LinearLayout matches=new LinearLayout(this);matches.setOrientation(LinearLayout.VERTICAL);body.addView(matches);
++        final ArrayList<CheckBox> checks=new ArrayList<>();final ArrayList<Integer> indexes=new ArrayList<>();
++        Runnable rebuild=()->{
++            matches.removeAllViews();checks.clear();indexes.clear();
++            JSONObject fv=variables.optJSONObject(from.getSelectedItemPosition());String src="{"+cleanToken(fv==null?"":fv.optString("token"))+"}";
++            for(int i=0;i<templates.length();i++){JSONObject t=templates.optJSONObject(i);if(t==null)continue;String txt=t.optString("text","");if(!txt.contains(src))continue;CheckBox cb=new CheckBox(this);cb.setText(t.optString("title","Mensagem "+(i+1)));cb.setTextColor(TEXT);cb.setChecked(all.isChecked());cb.setPadding(dp(4),dp(5),dp(4),dp(5));matches.addView(cb);checks.add(cb);indexes.add(i);}
++            if(checks.isEmpty()){TextView none=text("Nenhuma mensagem usa "+src+".",12,false);none.setTextColor(MUTED);none.setPadding(dp(4),dp(8),0,dp(8));matches.addView(none);}
++        };
++        from.setOnItemSelectedListener(new android.widget.AdapterView.OnItemSelectedListener(){public void onItemSelected(android.widget.AdapterView<?> p,View v,int pos,long id){rebuild.run();}public void onNothingSelected(android.widget.AdapterView<?> p){}});
++        all.setOnCheckedChangeListener((b,c)->{for(CheckBox cb:checks)cb.setChecked(c);});
++        ScrollView sc=new ScrollView(this);sc.setFillViewport(true);sc.addView(body);
++        AlertDialog d=new AlertDialog.Builder(this,AlertDialog.THEME_DEVICE_DEFAULT_DARK).setTitle("🔄 Trocar variável nas mensagens").setView(sc).setPositiveButton("APLICAR TROCA",null).setNegativeButton("CANCELAR",null).create();
++        d.setOnShowListener(x->{styleDialog(d);if(d.getWindow()!=null)d.getWindow().setLayout(-1,(int)(getResources().getDisplayMetrics().heightPixels*.88f));rebuild.run();d.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(v->{
++            int a=from.getSelectedItemPosition(),b=to.getSelectedItemPosition();if(a==b){Toast.makeText(this,"Escolha uma variável diferente para substituir",Toast.LENGTH_SHORT).show();return;}
++            JSONObject av=variables.optJSONObject(a),bv=variables.optJSONObject(b);String src="{"+cleanToken(av==null?"":av.optString("token"))+"}",dst="{"+cleanToken(bv==null?"":bv.optString("token"))+"}";int changed=0;
++            try{for(int k=0;k<checks.size();k++){if(!checks.get(k).isChecked())continue;int idx=indexes.get(k);JSONObject t=templates.optJSONObject(idx);if(t==null)continue;String before=t.optString("text","");String after=before.replace(src,dst);if(!before.equals(after)){t.put("text",after);templates.put(idx,t);changed++;}}saveTemplates();refreshTemplates();Toast.makeText(this,changed+" mensagem(ns) atualizada(s)",Toast.LENGTH_LONG).show();d.dismiss();}catch(Exception e){Toast.makeText(this,"Falha ao trocar variável: "+e.getMessage(),Toast.LENGTH_LONG).show();}
++        });});d.show();
+     }
+ 
+     private void refreshVariableManagerList(LinearLayout list){
+@@ -880,6 +923,7 @@
+             if("servidor".equals(source))return sv==null?null:sv.optString("name");if("adulto".equals(source))return isNoAdult?"Sem adulto":"Com adulto";if("api".equals(source))return apiUrl;
+             String url=find(data,new String[]{"dns","url","host","server","server_url"});if("porta".equals(source))return extractPort(url);
+             if("duracao".equals(source)){String start=find(data,new String[]{"createdAt","created_at","createdAtFormatted"});String end=find(data,new String[]{"expiresAt","expires_at","expiresAtFormatted","vencimento","validade"});return calculateDurationBetween(start,end);}
++            if("horas_teste".equals(source)){String start=find(data,new String[]{"createdAt","created_at","createdAtFormatted"});String end=find(data,new String[]{"expiresAt","expires_at","expiresAtFormatted","vencimento","validade"});return calculateHoursBetween(start,end);}
+         }
+         return null;
+     }
+@@ -887,6 +931,7 @@
+     private int indexOfIgnoreCase(String a,String b){return a.toLowerCase(new Locale("pt","BR")).indexOf(b.toLowerCase(new Locale("pt","BR")));}
+     private String formatDateBR(String v){if(v==null||v.trim().isEmpty())return v;String s=v.trim();SimpleDateFormat out=new SimpleDateFormat("dd/MM/yyyy 'às' HH:mm:ss",new Locale("pt","BR"));String[] fs={"yyyy-MM-dd HH:mm:ss","yyyy-MM-dd HH:mm","yyyy-MM-dd'T'HH:mm:ss","dd/MM/yyyy HH:mm:ss","dd/MM/yyyy HH:mm"};for(String f:fs){try{SimpleDateFormat in=new SimpleDateFormat(f,Locale.US);in.setLenient(false);Date d=in.parse(s);if(d!=null)return out.format(d);}catch(Exception ignored){}}return s.replaceFirst("^(\\d{2}/\\d{2}/\\d{4})\\s+(\\d{2}:\\d{2}:\\d{2})$","$1 às $2");}
+     private String calculateDurationBetween(String start,String end){try{Date a=parseAnyDate(start),b=parseAnyDate(end);if(a==null||b==null)return null;long mins=Math.max(0,(b.getTime()-a.getTime())/60000L);long d=mins/1440,h=(mins%1440)/60,m=mins%60;StringBuilder x=new StringBuilder();if(d>0)x.append(d).append("d ");if(h>0)x.append(h).append("h ");if(m>0||x.length()==0)x.append(m).append("min");return x.toString().trim();}catch(Exception e){return null;}}
++    private String calculateHoursBetween(String start,String end){try{Date a=parseAnyDate(start),b=parseAnyDate(end);if(a==null||b==null)return null;long diff=Math.max(0,b.getTime()-a.getTime());long hours=(diff+3599999L)/3600000L;if(diff>0&&hours<1)hours=1;if(hours==1)return "1 hora";return hours+" horas";}catch(Exception e){return null;}}
+     private Date parseAnyDate(String s){if(s==null)return null;s=s.trim();String[] fs={"yyyy-MM-dd HH:mm:ss","yyyy-MM-dd HH:mm","yyyy-MM-dd'T'HH:mm:ss","dd/MM/yyyy HH:mm:ss","dd/MM/yyyy HH:mm","dd/MM/yyyy 'às' HH:mm:ss"};for(String f:fs){try{SimpleDateFormat in=new SimpleDateFormat(f,new Locale("pt","BR"));in.setLenient(false);Date d=in.parse(s);if(d!=null)return d;}catch(Exception ignored){}}return null;}
+ 
+     private static class HttpStatusException extends IOException{final int code;final String body;HttpStatusException(int c,String b){super("HTTP "+c);code=c;body=b==null?"":b;}}
+--- app/build.gradle
++++ app/build.gradle
+@@ -4,7 +4,7 @@
+     namespace 'com.grupobigger.geradorteste'
+     compileSdk 35
+     defaultConfig {
+-        applicationId 'com.grupobigger.geradorteste'
++        applicationId 'com.grupobigger.geradorteste.v49'
+         minSdk 23
+         targetSdk 35
+         versionCode 43
