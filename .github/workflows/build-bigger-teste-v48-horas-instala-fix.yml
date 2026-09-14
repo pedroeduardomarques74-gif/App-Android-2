@@ -1,0 +1,107 @@
+name: BIGGER TESTE v48 Horas Instala Fix
+
+on:
+  push:
+    paths:
+      - '.github/workflows/build-bigger-teste-v48-horas-instala-fix.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Baixar repositorio
+        uses: actions/checkout@v4
+
+      - name: Configurar Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Configurar Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Instalar Android 35
+        run: |
+          yes | sdkmanager --licenses >/dev/null 2>&1 || true
+          sdkmanager "platforms;android-35" "build-tools;35.0.0"
+
+      - name: Configurar Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.7'
+
+      - name: Recuperar projeto v43
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re, base64
+          s=Path('.github/workflows/build-apk-leve-v43-texto-completo-corrigido.yml').read_text(encoding='utf-8')
+          m=re.search(r"printf '%s' '([A-Za-z0-9+/=]+)' \| base64 -d > projeto\.zip",s)
+          if not m: raise SystemExit('Payload v43 não encontrado')
+          Path('projeto.zip').write_bytes(base64.b64decode(m.group(1)))
+          PY
+          unzip -q projeto.zip
+          cp -a GeradorTesteIPTV-Ultra/. .
+
+      - name: Aplicar base v45
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re,textwrap
+          y=Path('.github/workflows/build-bigger-teste-v45-horas-backup.yml').read_text(encoding='utf-8')
+          pos=y.find('- name: Aplicar variável horas e correção de backup antigo')
+          if pos<0: raise SystemExit('Step v45 não encontrado')
+          trecho=y[pos:]
+          m=re.search(r"python3 - <<'PY'\n(.*?)\n\s+PY",trecho,re.S)
+          if not m: raise SystemExit('Python v45 não encontrado')
+          code=textwrap.dedent(m.group(1))
+          exec(compile(code,'patch_v45','exec'),{})
+          print('Base v45 aplicada')
+          PY
+
+      - name: Corrigir 1 hora e pacote de instalação
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+
+          p=Path('app/src/main/java/com/grupobigger/geradorteste/MainActivity.java')
+          s=p.read_text(encoding='utf-8')
+          old='long hours=diff/3600000L;if(hours==1)return "1 hora";return hours+" horas";'
+          new='long hours=(diff+3599999L)/3600000L;if(diff>0&&hours<1)hours=1;if(hours==1)return "1 hora";return hours+" horas";'
+          if old not in s:
+              raise SystemExit('Cálculo antigo de horas não encontrado')
+          s=s.replace(old,new,1)
+          p.write_text(s,encoding='utf-8')
+
+          g=Path('app/build.gradle')
+          t=g.read_text(encoding='utf-8')
+          t2,n=re.subn(r'applicationId\s+["\'][^"\']+["\']','applicationId "com.grupobigger.geradorteste.v48"',t,count=1)
+          if n!=1:
+              raise SystemExit('applicationId não encontrado')
+          g.write_text(t2,encoding='utf-8')
+          print('Horas e package ID corrigidos')
+          PY
+
+      - name: Compilar APK
+        run: gradle :app:assembleDebug --stacktrace
+
+      - name: Preparar APK
+        run: cp app/build/outputs/apk/debug/app-debug.apk BIGGER-TESTE-v48-HORAS-INSTALA-FIX.apk
+
+      - name: Enviar APK pronto
+        uses: actions/upload-artifact@v4
+        with:
+          name: BIGGER-TESTE-v48-HORAS-INSTALA-FIX
+          path: BIGGER-TESTE-v48-HORAS-INSTALA-FIX.apk
+          if-no-files-found: error
+          retention-days: 30
