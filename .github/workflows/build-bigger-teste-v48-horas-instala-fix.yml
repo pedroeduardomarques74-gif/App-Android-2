@@ -73,21 +73,17 @@ jobs:
           python3 - <<'PY'
           from pathlib import Path
           import re
-
           p=Path('app/src/main/java/com/grupobigger/geradorteste/MainActivity.java')
           s=p.read_text(encoding='utf-8')
           old='long hours=diff/3600000L;if(hours==1)return "1 hora";return hours+" horas";'
           new='long hours=(diff+3599999L)/3600000L;if(diff>0&&hours<1)hours=1;if(hours==1)return "1 hora";return hours+" horas";'
-          if old not in s:
-              raise SystemExit('Cálculo antigo de horas não encontrado')
+          if old not in s: raise SystemExit('Cálculo antigo de horas não encontrado')
           s=s.replace(old,new,1)
           p.write_text(s,encoding='utf-8')
-
           g=Path('app/build.gradle')
           t=g.read_text(encoding='utf-8')
           t2,n=re.subn(r'applicationId\s+["\'][^"\']+["\']','applicationId "com.grupobigger.geradorteste.v48"',t,count=1)
-          if n!=1:
-              raise SystemExit('applicationId não encontrado')
+          if n!=1: raise SystemExit('applicationId não encontrado')
           g.write_text(t2,encoding='utf-8')
           print('Horas e package ID corrigidos')
           PY
@@ -105,3 +101,5 @@ jobs:
           path: BIGGER-TESTE-v48-HORAS-INSTALA-FIX.apk
           if-no-files-found: error
           retention-days: 30
+
+# build trigger 2
