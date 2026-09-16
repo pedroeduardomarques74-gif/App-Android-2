@@ -1,4 +1,4 @@
-name: Gerar APK - Bigger Catalogo M3U
+name: Gerar APK - Red Play URL Login
 
 on:
   workflow_dispatch:
@@ -22,13 +22,10 @@ jobs:
           distribution: temurin
           java-version: '17'
 
-      - name: Configurar Android SDK
-        uses: android-actions/setup-android@v3
-
-      - name: Instalar Android SDK 36
+      - name: Instalar Android SDK
         run: |
           yes | sdkmanager --licenses >/dev/null || true
-          sdkmanager "platform-tools" "platforms;android-36" "build-tools;35.0.0"
+          sdkmanager "platform-tools" "platforms;android-35" "build-tools;35.0.0"
 
       - name: Configurar Gradle 8.9
         uses: gradle/actions/setup-gradle@v4
@@ -36,17 +33,18 @@ jobs:
           gradle-version: '8.9'
 
       - name: Compilar APK Debug
+        working-directory: url-login-player
         run: gradle :app:assembleDebug --stacktrace
 
       - name: Preparar APK
         run: |
           mkdir -p apk-saida
-          cp app/build/outputs/apk/debug/app-debug.apk apk-saida/Bigger-Catalogo-M3U-v1.apk
+          cp url-login-player/app/build/outputs/apk/debug/app-debug.apk apk-saida/Red-Play-URL-Login.apk
 
       - name: Enviar APK para download
         uses: actions/upload-artifact@v4
         with:
-          name: Bigger-Catalogo-M3U-APK
-          path: apk-saida/Bigger-Catalogo-M3U-v1.apk
+          name: Red-Play-URL-Login-APK
+          path: apk-saida/Red-Play-URL-Login.apk
           if-no-files-found: error
           retention-days: 30
