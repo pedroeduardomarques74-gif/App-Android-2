@@ -55,6 +55,20 @@ jobs:
       - name: Aplicar melhorias v49
         run: patch -p0 < bigger-teste-v49.patch
 
+      - name: Mostrar trecho real da tela de mensagens
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          s=Path('app/src/main/java/com/grupobigger/geradorteste/MainActivity.java').read_text(encoding='utf-8')
+          i=s.find('MOSTRAR ESTA MENSAGEM EM')
+          if i < 0: i=s.find('Adicionar uma mensagem')
+          a=max(0,i-4500); b=min(len(s),i+9000)
+          print('===== TRECHO TELA MENSAGEM =====')
+          print(s[a:b])
+          print('===== FIM TRECHO =====')
+          PY
+
       - name: Aplicar scroll proprio na lista de servidores das mensagens
         shell: bash
         run: |
