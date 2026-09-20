@@ -1,4 +1,4 @@
-name: BIGGER TESTE v51 Trava Scroll Servidores
+name: BIGGER TESTE v52 Scroll Servidores Travado
 
 on:
   push:
@@ -80,19 +80,26 @@ jobs:
           s=p.read_text(encoding='utf-8')
 
           old='ScrollView scopesScroll=new ScrollView(this);scopesScroll.addView(scopesBox);scopesScroll.setVerticalScrollBarEnabled(true);scopesScroll.setOnTouchListener(nestedScrollLock());LinearLayout.LayoutParams slp=new LinearLayout.LayoutParams(-1,servers.length()>4?dp(4*38):ViewGroup.LayoutParams.WRAP_CONTENT);l.addView(scopesScroll,slp);'
-          new='ScrollView scopesScroll=new ScrollView(this);scopesScroll.addView(scopesBox);scopesScroll.setVerticalScrollBarEnabled(true);scopesScroll.setScrollbarFadingEnabled(false);scopesScroll.setNestedScrollingEnabled(false);scopesScroll.setOnTouchListener((v,e)->{ViewParent parent=v.getParent();if(parent!=null)parent.requestDisallowInterceptTouchEvent(true);int a=e.getActionMasked();if((a==MotionEvent.ACTION_UP||a==MotionEvent.ACTION_CANCEL)&&parent!=null)parent.requestDisallowInterceptTouchEvent(false);return false;});LinearLayout.LayoutParams slp=new LinearLayout.LayoutParams(-1,servers.length()>4?dp(4*38):ViewGroup.LayoutParams.WRAP_CONTENT);l.addView(scopesScroll,slp);'
+          new='final boolean[] lockOuterMessageScroll={false};ScrollView scopesScroll=new ScrollView(this);scopesScroll.addView(scopesBox);scopesScroll.setVerticalScrollBarEnabled(true);scopesScroll.setScrollbarFadingEnabled(false);scopesScroll.setNestedScrollingEnabled(true);scopesScroll.setOnTouchListener((v,e)->{int a=e.getActionMasked();if(a==MotionEvent.ACTION_DOWN||a==MotionEvent.ACTION_MOVE)lockOuterMessageScroll[0]=true;if(a==MotionEvent.ACTION_UP||a==MotionEvent.ACTION_CANCEL)lockOuterMessageScroll[0]=false;return false;});LinearLayout.LayoutParams slp=new LinearLayout.LayoutParams(-1,servers.length()>4?dp(4*38):ViewGroup.LayoutParams.WRAP_CONTENT);l.addView(scopesScroll,slp);'
 
           if old not in s:
               raise SystemExit('Linha exata da lista de servidores nao encontrada')
           s=s.replace(old,new,1)
+
+          old_outer='ScrollView scroll=new ScrollView(this);scroll.setFillViewport(true);scroll.setClipToPadding(false);scroll.addView(l,new ScrollView.LayoutParams(-1,-2));'
+          new_outer='ScrollView scroll=new ScrollView(this){@Override public boolean onInterceptTouchEvent(MotionEvent ev){if(lockOuterMessageScroll[0])return false;return super.onInterceptTouchEvent(ev);}};scroll.setFillViewport(true);scroll.setClipToPadding(false);scroll.addView(l,new ScrollView.LayoutParams(-1,-2));'
+          if old_outer not in s:
+              raise SystemExit('Scroll externo da tela de mensagem nao encontrado')
+          s=s.replace(old_outer,new_outer,1)
+
           s=s.replace('build-bigger-teste-v49-variaveis-massa-horas.yml','build-bigger-teste-v50-scroll-servidores-mensagens.yml')
 
           p.write_text(s,encoding='utf-8')
 
           g=Path('app/build.gradle')
           gs=g.read_text(encoding='utf-8')
-          gs=gs.replace("applicationId 'com.grupobigger.geradorteste.v49'","applicationId 'com.grupobigger.geradorteste.v51'")
-          gs=re.sub(r'versionCode\s+43\b','versionCode 51',gs)
+          gs=gs.replace("applicationId 'com.grupobigger.geradorteste.v49'","applicationId 'com.grupobigger.geradorteste.v52'")
+          gs=re.sub(r'versionCode\s+43\b','versionCode 52',gs)
           g.write_text(gs,encoding='utf-8')
 
           print('Scroll interno dos servidores corrigido com bloqueio do scroll externo.')
@@ -102,13 +109,13 @@ jobs:
         run: gradle :app:assembleDebug --stacktrace
 
       - name: Preparar APK
-        run: cp app/build/outputs/apk/debug/app-debug.apk BIGGER-TESTE-v51-TRAVA-SCROLL-SERVIDORES.apk
+        run: cp app/build/outputs/apk/debug/app-debug.apk BIGGER-TESTE-v52-SCROLL-SERVIDORES-TRAVADO.apk
 
       - name: Enviar APK pronto
         uses: actions/upload-artifact@v4
         with:
-          name: BIGGER-TESTE-v51-TRAVA-SCROLL-SERVIDORES
-          path: BIGGER-TESTE-v51-TRAVA-SCROLL-SERVIDORES.apk
+          name: BIGGER-TESTE-v52-SCROLL-SERVIDORES-TRAVADO
+          path: BIGGER-TESTE-v52-SCROLL-SERVIDORES-TRAVADO.apk
           if-no-files-found: error
           retention-days: 30
 
@@ -116,9 +123,9 @@ jobs:
         shell: bash
         run: |
           mkdir -p builds
-          cp BIGGER-TESTE-v51-TRAVA-SCROLL-SERVIDORES.apk builds/
+          cp BIGGER-TESTE-v52-SCROLL-SERVIDORES-TRAVADO.apk builds/
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add builds/BIGGER-TESTE-v51-TRAVA-SCROLL-SERVIDORES.apk
-          git commit -m "build: APK v51 trava scroll servidores" || exit 0
+          git add builds/BIGGER-TESTE-v52-SCROLL-SERVIDORES-TRAVADO.apk
+          git commit -m "build: APK v52 scroll servidores travado" || exit 0
           git push
