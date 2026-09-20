@@ -1,0 +1,169 @@
+name: BIGGER TESTE v50 Scroll Servidores Mensagens
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Baixar repositorio
+        uses: actions/checkout@v4
+
+      - name: Configurar Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Instalar Android 35
+        shell: bash
+        run: |
+          export ANDROID_HOME=/usr/local/lib/android/sdk
+          export ANDROID_SDK_ROOT=/usr/local/lib/android/sdk
+          yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses >/dev/null 2>&1 || true
+          "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "platform-tools" "platforms;android-35" "build-tools;35.0.0"
+          echo "ANDROID_HOME=$ANDROID_HOME" >> "$GITHUB_ENV"
+          echo "ANDROID_SDK_ROOT=$ANDROID_SDK_ROOT" >> "$GITHUB_ENV"
+
+      - name: Configurar Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.7'
+
+      - name: Recuperar projeto v43
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re, base64
+          s=Path('.github/workflows/build-apk-leve-v43-texto-completo-corrigido.yml').read_text(encoding='utf-8')
+          m=re.search(r"printf '%s' '([A-Za-z0-9+/=]+)' \\| base64 -d > projeto\\.zip",s)
+          if not m:
+              raise SystemExit('Payload do projeto v43 nao encontrado')
+          Path('projeto.zip').write_bytes(base64.b64decode(m.group(1)))
+          PY
+          unzip -q projeto.zip
+          cp -a GeradorTesteIPTV-Ultra/. .
+
+      - name: Aplicar melhorias v49
+        run: patch -p0 < bigger-teste-v49.patch
+
+      - name: Aplicar scroll proprio na lista de servidores das mensagens
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+
+          p=Path('app/src/main/java/com/grupobigger/geradorteste/MainActivity.java')
+          s=p.read_text(encoding='utf-8')
+
+          marker='MOSTRAR ESTA MENSAGEM EM'
+          idx=s.find(marker)
+          if idx < 0:
+              raise SystemExit('Nao encontrei a area MOSTRAR ESTA MENSAGEM EM')
+
+          # Trabalha somente dentro do metodo que contem a tela de adicionar/editar mensagem.
+          start=max(s.rfind('\n    private ',0,idx), s.rfind('\n    public ',0,idx))
+          if start < 0: start=max(0,idx-8000)
+          ends=[x for x in (s.find('\n    private ',idx+1),s.find('\n    public ',idx+1)) if x>=0]
+          end=min(ends) if ends else min(len(s),idx+16000)
+          block=s[start:end]
+
+          # Caso mais comum: ja existe um LinearLayout que recebe os checkboxes.
+          decls=list(re.finditer(r'LinearLayout\s+(\w+)\s*=\s*new\s+LinearLayout\s*\(this\)\s*;',block))
+          candidates=[]
+          for d in decls:
+              name=d.group(1)
+              if d.start() < block.find(marker):
+                  continue
+              # lista deve receber addView de checkbox/linha e ficar proxima da area de servidores
+              uses=len(re.findall(r'\b'+re.escape(name)+r'\.addView\s*\(',block[d.end():]))
+              if uses:
+                  candidates.append((d.start(),name,uses))
+          changed=False
+
+          if candidates:
+              _,name,_=candidates[0]
+              # Procura onde essa lista e adicionada ao corpo/painel.
+              pat=re.compile(r'(?m)^(\s*)(\w+)\.addView\s*\(\s*'+re.escape(name)+r'\s*\)\s*;')
+              m=pat.search(block,block.find(marker))
+              if m:
+                  indent,parent=m.group(1),m.group(2)
+                  repl=(
+                      indent+'ScrollView serverMessageScroll=new ScrollView(this);\n'
+                      +indent+'serverMessageScroll.setFillViewport(false);\n'
+                      +indent+'serverMessageScroll.setVerticalScrollBarEnabled(true);\n'
+                      +indent+'serverMessageScroll.setNestedScrollingEnabled(true);\n'
+                      +indent+'serverMessageScroll.addView('+name+');\n'
+                      +indent+'LinearLayout.LayoutParams serverMessageScrollLp=new LinearLayout.LayoutParams(-1,dp(220));\n'
+                      +indent+'serverMessageScrollLp.setMargins(0,dp(4),0,dp(8));\n'
+                      +indent+parent+'.addView(serverMessageScroll,serverMessageScrollLp);'
+                  )
+                  block=block[:m.start()]+repl+block[m.end():]
+                  changed=True
+
+          # Fallback: checkboxes eram adicionados diretamente no corpo.
+          if not changed:
+              after=block.find(marker)
+              loop=re.search(r'for\s*\([^\)]*servers\.length\s*\(\)[^\)]*\)\s*\{',block[after:])
+              if loop:
+                  loop_start=after+loop.start()
+                  loop_end=block.find('}',loop_start)
+                  chunk=block[loop_start:loop_end+1 if loop_end>=0 else len(block)]
+                  adds=list(re.finditer(r'(\w+)\.addView\s*\((\w+)(?:\s*,[^;]*)?\)\s*;',chunk))
+                  if adds:
+                      parent=adds[-1].group(1)
+                      indent='        '
+                      insert=(
+                          indent+'LinearLayout serverMessageList=new LinearLayout(this); serverMessageList.setOrientation(LinearLayout.VERTICAL);\n'
+                          +indent+'ScrollView serverMessageScroll=new ScrollView(this); serverMessageScroll.setFillViewport(false); serverMessageScroll.setVerticalScrollBarEnabled(true); serverMessageScroll.setNestedScrollingEnabled(true);\n'
+                          +indent+'serverMessageScroll.addView(serverMessageList);\n'
+                          +indent+'LinearLayout.LayoutParams serverMessageScrollLp=new LinearLayout.LayoutParams(-1,dp(220)); serverMessageScrollLp.setMargins(0,dp(4),0,dp(8));\n'
+                          +indent+parent+'.addView(serverMessageScroll,serverMessageScrollLp);\n'
+                      )
+                      block=block[:loop_start]+insert+block[loop_start:]
+                      # Troca apenas os addView dentro do loop para a lista rolavel.
+                      shifted=loop_start+len(insert)
+                      close=block.find('}',shifted)
+                      chunk=block[shifted:close+1 if close>=0 else len(block)]
+                      chunk2=re.sub(r'\b'+re.escape(parent)+r'\.addView\s*\(', 'serverMessageList.addView(', chunk)
+                      block=block[:shifted]+chunk2+block[shifted+len(chunk):]
+                      changed=True
+
+          if not changed:
+              raise SystemExit('Nao consegui identificar automaticamente a lista de servidores para aplicar o scroll')
+
+          s=s[:start]+block+s[end:]
+
+          # Faz o exportador interno apontar para a nova versao.
+          s=s.replace('build-bigger-teste-v49-variaveis-massa-horas.yml','build-bigger-teste-v50-scroll-servidores-mensagens.yml')
+          p.write_text(s,encoding='utf-8')
+
+          # Pacote separado para instalar lado a lado com a v49.
+          g=Path('app/build.gradle')
+          gs=g.read_text(encoding='utf-8')
+          gs=gs.replace("applicationId 'com.grupobigger.geradorteste.v49'","applicationId 'com.grupobigger.geradorteste.v50'")
+          gs=re.sub(r'versionCode\s+43\b','versionCode 50',gs)
+          g.write_text(gs,encoding='utf-8')
+
+          print('Scroll proprio da lista de servidores aplicado com sucesso.')
+          PY
+
+      - name: Compilar APK
+        run: gradle :app:assembleDebug --stacktrace
+
+      - name: Preparar APK
+        run: cp app/build/outputs/apk/debug/app-debug.apk BIGGER-TESTE-v50-SCROLL-SERVIDORES-MENSAGENS.apk
+
+      - name: Enviar APK pronto
+        uses: actions/upload-artifact@v4
+        with:
+          name: BIGGER-TESTE-v50-SCROLL-SERVIDORES-MENSAGENS
+          path: BIGGER-TESTE-v50-SCROLL-SERVIDORES-MENSAGENS.apk
+          if-no-files-found: error
+          retention-days: 30
