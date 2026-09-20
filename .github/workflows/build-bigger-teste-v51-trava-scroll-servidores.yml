@@ -3,7 +3,7 @@ name: BIGGER TESTE v51 Trava Scroll Servidores
 on:
   push:
     paths:
-      - '.github/workflows/build-bigger-teste-v51-scroll-servidores-mensagens.yml'
+      - '.github/workflows/build-bigger-teste-v51-trava-scroll-servidores.yml'
   workflow_dispatch:
 
 permissions:
@@ -71,7 +71,7 @@ jobs:
           if old not in s:
               raise SystemExit('Linha exata da lista de servidores nao encontrada')
           s=s.replace(old,new,1)
-          s=s.replace('build-bigger-teste-v49-variaveis-massa-horas.yml','build-bigger-teste-v51-scroll-servidores-mensagens.yml')
+          s=s.replace('build-bigger-teste-v49-variaveis-massa-horas.yml','build-bigger-teste-v51-trava-scroll-servidores.yml')
 
           p.write_text(s,encoding='utf-8')
 
