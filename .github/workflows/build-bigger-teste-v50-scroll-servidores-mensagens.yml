@@ -79,96 +79,23 @@ jobs:
           p=Path('app/src/main/java/com/grupobigger/geradorteste/MainActivity.java')
           s=p.read_text(encoding='utf-8')
 
-          marker='MOSTRAR ESTA MENSAGEM EM'
-          idx=s.find(marker)
-          if idx < 0:
-              raise SystemExit('Nao encontrei a area MOSTRAR ESTA MENSAGEM EM')
+          old='ScrollView scopesScroll=new ScrollView(this);scopesScroll.addView(scopesBox);scopesScroll.setVerticalScrollBarEnabled(true);scopesScroll.setOnTouchListener(nestedScrollLock());LinearLayout.LayoutParams slp=new LinearLayout.LayoutParams(-1,servers.length()>4?dp(4*38):ViewGroup.LayoutParams.WRAP_CONTENT);l.addView(scopesScroll,slp);'
+          new='ScrollView scopesScroll=new ScrollView(this);scopesScroll.addView(scopesBox);scopesScroll.setVerticalScrollBarEnabled(true);scopesScroll.setScrollbarFadingEnabled(false);scopesScroll.setNestedScrollingEnabled(true);scopesScroll.setOnTouchListener((v,e)->{ViewParent parent=v.getParent();if(parent!=null)parent.requestDisallowInterceptTouchEvent(true);int a=e.getActionMasked();if((a==MotionEvent.ACTION_UP||a==MotionEvent.ACTION_CANCEL)&&parent!=null)parent.requestDisallowInterceptTouchEvent(false);return false;});LinearLayout.LayoutParams slp=new LinearLayout.LayoutParams(-1,servers.length()>4?dp(4*38):ViewGroup.LayoutParams.WRAP_CONTENT);l.addView(scopesScroll,slp);'
 
-          # Trabalha somente dentro do metodo que contem a tela de adicionar/editar mensagem.
-          start=max(s.rfind('\n    private ',0,idx), s.rfind('\n    public ',0,idx))
-          if start < 0: start=max(0,idx-8000)
-          ends=[x for x in (s.find('\n    private ',idx+1),s.find('\n    public ',idx+1)) if x>=0]
-          end=min(ends) if ends else min(len(s),idx+16000)
-          block=s[start:end]
-
-          # Caso mais comum: ja existe um LinearLayout que recebe os checkboxes.
-          decls=list(re.finditer(r'LinearLayout\s+(\w+)\s*=\s*new\s+LinearLayout\s*\(this\)\s*;',block))
-          candidates=[]
-          for d in decls:
-              name=d.group(1)
-              if d.start() < block.find(marker):
-                  continue
-              # lista deve receber addView de checkbox/linha e ficar proxima da area de servidores
-              uses=len(re.findall(r'\b'+re.escape(name)+r'\.addView\s*\(',block[d.end():]))
-              if uses:
-                  candidates.append((d.start(),name,uses))
-          changed=False
-
-          if candidates:
-              _,name,_=candidates[0]
-              # Procura onde essa lista e adicionada ao corpo/painel.
-              pat=re.compile(r'(?m)^(\s*)(\w+)\.addView\s*\(\s*'+re.escape(name)+r'\s*\)\s*;')
-              m=pat.search(block,block.find(marker))
-              if m:
-                  indent,parent=m.group(1),m.group(2)
-                  repl=(
-                      indent+'ScrollView serverMessageScroll=new ScrollView(this);\n'
-                      +indent+'serverMessageScroll.setFillViewport(false);\n'
-                      +indent+'serverMessageScroll.setVerticalScrollBarEnabled(true);\n'
-                      +indent+'serverMessageScroll.setNestedScrollingEnabled(true);\n'
-                      +indent+'serverMessageScroll.addView('+name+');\n'
-                      +indent+'LinearLayout.LayoutParams serverMessageScrollLp=new LinearLayout.LayoutParams(-1,dp(220));\n'
-                      +indent+'serverMessageScrollLp.setMargins(0,dp(4),0,dp(8));\n'
-                      +indent+parent+'.addView(serverMessageScroll,serverMessageScrollLp);'
-                  )
-                  block=block[:m.start()]+repl+block[m.end():]
-                  changed=True
-
-          # Fallback: checkboxes eram adicionados diretamente no corpo.
-          if not changed:
-              after=block.find(marker)
-              loop=re.search(r'for\s*\([^\)]*servers\.length\s*\(\)[^\)]*\)\s*\{',block[after:])
-              if loop:
-                  loop_start=after+loop.start()
-                  loop_end=block.find('}',loop_start)
-                  chunk=block[loop_start:loop_end+1 if loop_end>=0 else len(block)]
-                  adds=list(re.finditer(r'(\w+)\.addView\s*\((\w+)(?:\s*,[^;]*)?\)\s*;',chunk))
-                  if adds:
-                      parent=adds[-1].group(1)
-                      indent='        '
-                      insert=(
-                          indent+'LinearLayout serverMessageList=new LinearLayout(this); serverMessageList.setOrientation(LinearLayout.VERTICAL);\n'
-                          +indent+'ScrollView serverMessageScroll=new ScrollView(this); serverMessageScroll.setFillViewport(false); serverMessageScroll.setVerticalScrollBarEnabled(true); serverMessageScroll.setNestedScrollingEnabled(true);\n'
-                          +indent+'serverMessageScroll.addView(serverMessageList);\n'
-                          +indent+'LinearLayout.LayoutParams serverMessageScrollLp=new LinearLayout.LayoutParams(-1,dp(220)); serverMessageScrollLp.setMargins(0,dp(4),0,dp(8));\n'
-                          +indent+parent+'.addView(serverMessageScroll,serverMessageScrollLp);\n'
-                      )
-                      block=block[:loop_start]+insert+block[loop_start:]
-                      # Troca apenas os addView dentro do loop para a lista rolavel.
-                      shifted=loop_start+len(insert)
-                      close=block.find('}',shifted)
-                      chunk=block[shifted:close+1 if close>=0 else len(block)]
-                      chunk2=re.sub(r'\b'+re.escape(parent)+r'\.addView\s*\(', 'serverMessageList.addView(', chunk)
-                      block=block[:shifted]+chunk2+block[shifted+len(chunk):]
-                      changed=True
-
-          if not changed:
-              raise SystemExit('Nao consegui identificar automaticamente a lista de servidores para aplicar o scroll')
-
-          s=s[:start]+block+s[end:]
-
-          # Faz o exportador interno apontar para a nova versao.
+          if old not in s:
+              raise SystemExit('Linha exata da lista de servidores nao encontrada')
+          s=s.replace(old,new,1)
           s=s.replace('build-bigger-teste-v49-variaveis-massa-horas.yml','build-bigger-teste-v50-scroll-servidores-mensagens.yml')
+
           p.write_text(s,encoding='utf-8')
 
-          # Pacote separado para instalar lado a lado com a v49.
           g=Path('app/build.gradle')
           gs=g.read_text(encoding='utf-8')
           gs=gs.replace("applicationId 'com.grupobigger.geradorteste.v49'","applicationId 'com.grupobigger.geradorteste.v50'")
           gs=re.sub(r'versionCode\s+43\b','versionCode 50',gs)
           g.write_text(gs,encoding='utf-8')
 
-          print('Scroll proprio da lista de servidores aplicado com sucesso.')
+          print('Scroll interno dos servidores corrigido com bloqueio do scroll externo.')
           PY
 
       - name: Compilar APK
