@@ -1,9 +1,9 @@
-name: BIGGER TESTE v50 Scroll Servidores Mensagens
+name: BIGGER TESTE v51 Trava Scroll Servidores
 
 on:
   push:
     paths:
-      - '.github/workflows/build-bigger-teste-v50-scroll-servidores-mensagens.yml'
+      - '.github/workflows/build-bigger-teste-v51-trava-scroll-servidores.yml'
   workflow_dispatch:
 
 permissions:
@@ -80,7 +80,7 @@ jobs:
           s=p.read_text(encoding='utf-8')
 
           old='ScrollView scopesScroll=new ScrollView(this);scopesScroll.addView(scopesBox);scopesScroll.setVerticalScrollBarEnabled(true);scopesScroll.setOnTouchListener(nestedScrollLock());LinearLayout.LayoutParams slp=new LinearLayout.LayoutParams(-1,servers.length()>4?dp(4*38):ViewGroup.LayoutParams.WRAP_CONTENT);l.addView(scopesScroll,slp);'
-          new='ScrollView scopesScroll=new ScrollView(this);scopesScroll.addView(scopesBox);scopesScroll.setVerticalScrollBarEnabled(true);scopesScroll.setScrollbarFadingEnabled(false);scopesScroll.setNestedScrollingEnabled(true);scopesScroll.setOnTouchListener((v,e)->{ViewParent parent=v.getParent();if(parent!=null)parent.requestDisallowInterceptTouchEvent(true);int a=e.getActionMasked();if((a==MotionEvent.ACTION_UP||a==MotionEvent.ACTION_CANCEL)&&parent!=null)parent.requestDisallowInterceptTouchEvent(false);return false;});LinearLayout.LayoutParams slp=new LinearLayout.LayoutParams(-1,servers.length()>4?dp(4*38):ViewGroup.LayoutParams.WRAP_CONTENT);l.addView(scopesScroll,slp);'
+          new='ScrollView scopesScroll=new ScrollView(this);scopesScroll.addView(scopesBox);scopesScroll.setVerticalScrollBarEnabled(true);scopesScroll.setScrollbarFadingEnabled(false);scopesScroll.setNestedScrollingEnabled(false);scopesScroll.setOnTouchListener((v,e)->{ViewParent parent=v.getParent();if(parent!=null)parent.requestDisallowInterceptTouchEvent(true);int a=e.getActionMasked();if((a==MotionEvent.ACTION_UP||a==MotionEvent.ACTION_CANCEL)&&parent!=null)parent.requestDisallowInterceptTouchEvent(false);return false;});LinearLayout.LayoutParams slp=new LinearLayout.LayoutParams(-1,servers.length()>4?dp(4*38):ViewGroup.LayoutParams.WRAP_CONTENT);l.addView(scopesScroll,slp);'
 
           if old not in s:
               raise SystemExit('Linha exata da lista de servidores nao encontrada')
@@ -91,8 +91,8 @@ jobs:
 
           g=Path('app/build.gradle')
           gs=g.read_text(encoding='utf-8')
-          gs=gs.replace("applicationId 'com.grupobigger.geradorteste.v49'","applicationId 'com.grupobigger.geradorteste.v50'")
-          gs=re.sub(r'versionCode\s+43\b','versionCode 50',gs)
+          gs=gs.replace("applicationId 'com.grupobigger.geradorteste.v49'","applicationId 'com.grupobigger.geradorteste.v51'")
+          gs=re.sub(r'versionCode\s+43\b','versionCode 51',gs)
           g.write_text(gs,encoding='utf-8')
 
           print('Scroll interno dos servidores corrigido com bloqueio do scroll externo.')
@@ -102,13 +102,13 @@ jobs:
         run: gradle :app:assembleDebug --stacktrace
 
       - name: Preparar APK
-        run: cp app/build/outputs/apk/debug/app-debug.apk BIGGER-TESTE-v50-SCROLL-SERVIDORES-MENSAGENS.apk
+        run: cp app/build/outputs/apk/debug/app-debug.apk BIGGER-TESTE-v51-TRAVA-SCROLL-SERVIDORES.apk
 
       - name: Enviar APK pronto
         uses: actions/upload-artifact@v4
         with:
-          name: BIGGER-TESTE-v50-SCROLL-SERVIDORES-MENSAGENS
-          path: BIGGER-TESTE-v50-SCROLL-SERVIDORES-MENSAGENS.apk
+          name: BIGGER-TESTE-v51-TRAVA-SCROLL-SERVIDORES
+          path: BIGGER-TESTE-v51-TRAVA-SCROLL-SERVIDORES.apk
           if-no-files-found: error
           retention-days: 30
 
@@ -116,9 +116,9 @@ jobs:
         shell: bash
         run: |
           mkdir -p builds
-          cp BIGGER-TESTE-v50-SCROLL-SERVIDORES-MENSAGENS.apk builds/
+          cp BIGGER-TESTE-v51-TRAVA-SCROLL-SERVIDORES.apk builds/
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add builds/BIGGER-TESTE-v50-SCROLL-SERVIDORES-MENSAGENS.apk
-          git commit -m "build: APK v50 scroll servidores" || exit 0
+          git add builds/BIGGER-TESTE-v51-TRAVA-SCROLL-SERVIDORES.apk
+          git commit -m "build: APK v51 trava scroll servidores" || exit 0
           git push
