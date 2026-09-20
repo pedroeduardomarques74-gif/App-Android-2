@@ -3,7 +3,7 @@ name: BIGGER TESTE v51 Trava Scroll Servidores
 on:
   push:
     paths:
-      - '.github/workflows/build-bigger-teste-v51-trava-scroll-servidores.yml'
+      - '.github/workflows/build-bigger-teste-v50-scroll-servidores-mensagens.yml'
   workflow_dispatch:
 
 permissions:
