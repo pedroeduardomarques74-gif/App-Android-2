@@ -1,0 +1,48 @@
+name: Calculadora Corridas APK
+on:
+  push:
+    branches: [ "calculadora-corridas-build" ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Preparar projeto
+        run: |
+          rm -rf build_project
+          mkdir build_project
+          base64 -d calculadora_project.zip.b64 > project.zip
+          unzip -q project.zip -d build_project
+          echo "PROJECT_DIR=$(find build_project -mindepth 1 -maxdepth 1 -type d | head -1)" >> "$GITHUB_ENV"
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.9'
+
+      - name: Testes
+        run: |
+          cd "$PROJECT_DIR"
+          gradle testDebugUnitTest --stacktrace
+
+      - name: Gerar APK
+        run: |
+          cd "$PROJECT_DIR"
+          gradle assembleDebug --stacktrace
+
+      - name: Coletar APK
+        run: |
+          mkdir -p apk-out
+          cp "$PROJECT_DIR/app/build/outputs/apk/debug/app-debug.apk" apk-out/Calculadora-Corridas.apk
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Calculadora-Corridas-APK
+          path: apk-out/Calculadora-Corridas.apk
