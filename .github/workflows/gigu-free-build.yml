@@ -1,0 +1,49 @@
+name: BIGGER AUTO PLACA v9 - GigU FREE
+
+on:
+  push:
+    branches:
+      - gigu-free-build
+    paths:
+      - 'gigu_free/**'
+      - '.github/workflows/gigu-free-build.yml'
+  workflow_dispatch:
+
+jobs:
+  build-apk:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Gerar estrutura Android
+        working-directory: gigu_free
+        run: flutter create --platforms android --org com.gigu.free .
+
+      - name: Dependencias
+        working-directory: gigu_free
+        run: flutter pub get
+
+      - name: Analisar
+        working-directory: gigu_free
+        run: flutter analyze
+
+      - name: Compilar APK release
+        working-directory: gigu_free
+        run: flutter build apk --release
+
+      - name: Renomear APK
+        run: cp gigu_free/build/app/outputs/flutter-apk/app-release.apk GigU-FREE.apk
+
+      - name: Enviar APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: GigU-FREE-APK
+          path: GigU-FREE.apk
+          if-no-files-found: error
