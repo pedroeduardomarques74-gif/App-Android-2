@@ -1,7 +1,7 @@
-name: Calculadora Corridas APK - v1.2
+name: Calculadora Corridas APK - v1.3
 on:
   push:
-    branches: [ "calculadora-corridas-v12" ]
+    branches: [ "calculadora-corridas-v13" ]
   workflow_dispatch:
 
 jobs:
@@ -12,8 +12,8 @@ jobs:
 
       - name: Preparar projeto base
         run: |
-          rm -rf build_project ui_overlay v12_overlay
-          mkdir build_project ui_overlay v12_overlay
+          rm -rf build_project ui_overlay v12_overlay v13_overlay
+          mkdir build_project ui_overlay v12_overlay v13_overlay
           cat calcpart_00 calcpart_01 calcpart_02 calcpart_03 calcpart_04 calcpart_05 calcpart_06 > calculadora_project.zip.b64
           base64 -d calculadora_project.zip.b64 > project.zip
           unzip -q project.zip -d build_project
@@ -34,6 +34,12 @@ jobs:
           unzip -q v12_overlay.zip -d v12_overlay
           cp -R v12_overlay/app/. "$PROJECT_DIR/app/"
 
+      - name: Aplicar melhorias v1.3
+        run: |
+          base64 -d v13_overlay.zip.b64 > v13_overlay.zip
+          unzip -q v13_overlay.zip -d v13_overlay
+          cp -R v13_overlay/app/. "$PROJECT_DIR/app/"
+
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
@@ -48,7 +54,7 @@ jobs:
           cd "$PROJECT_DIR"
           gradle testDebugUnitTest --stacktrace
 
-      - name: Gerar APK v1.2
+      - name: Gerar APK v1.3
         run: |
           cd "$PROJECT_DIR"
           gradle assembleDebug --stacktrace
@@ -56,15 +62,9 @@ jobs:
       - name: Coletar APK
         run: |
           mkdir -p apk-out
-          cp "$PROJECT_DIR/app/build/outputs/apk/debug/app-debug.apk" apk-out/Calculadora-Corridas-v1.2.apk
+          cp "$PROJECT_DIR/app/build/outputs/apk/debug/app-debug.apk" apk-out/Calculadora-Corridas-v1.3.apk
 
       - uses: actions/upload-artifact@v4
         with:
-          name: Calculadora-Corridas-v1.2
-          path: apk-out/Calculadora-Corridas-v1.2.apk
-
-      - name: Exportar fonte aplicado
-        uses: actions/upload-artifact@v4
-        with:
-          name: Calculadora-Corridas-v1.2-source
-          path: ${{ env.PROJECT_DIR }}
+          name: Calculadora-Corridas-v1.3
+          path: apk-out/Calculadora-Corridas-v1.3.apk
