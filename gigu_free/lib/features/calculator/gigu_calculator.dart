@@ -15,16 +15,16 @@ class GiguCalculator {
         input.monthlyRent +
         (input.yearlyTax / 12.0) +
         input.monthlyOtherCosts;
-    final fixedCostPerKm = monthlyKm > 0 ? fixedCostPerMonth / monthlyKm : 0;
+    final fixedCostPerKm = monthlyKm > 0 ? fixedCostPerMonth / monthlyKm : 0.0;
     final costPerKm = variableCostPerKm + fixedCostPerKm;
     final totalMonthlyCost = costPerKm * monthlyKm;
     final requiredMonthlyRevenue = totalMonthlyCost + input.targetMonthlyEarnings;
-    final targetRevenuePerKm = monthlyKm > 0 ? requiredMonthlyRevenue / monthlyKm : 0;
-    final targetRevenuePerHour = monthlyHours > 0 ? requiredMonthlyRevenue / monthlyHours : 0;
+    final targetRevenuePerKm = monthlyKm > 0 ? requiredMonthlyRevenue / monthlyKm : 0.0;
+    final targetRevenuePerHour = monthlyHours > 0 ? requiredMonthlyRevenue / monthlyHours : 0.0;
     final dailyTargetRevenue = requiredMonthlyRevenue / input.workDaysPerMonth;
     final monthlyNetProfit = requiredMonthlyRevenue - totalMonthlyCost;
     final dailyNetProfit = monthlyNetProfit / input.workDaysPerMonth;
-    final profitPct = requiredMonthlyRevenue > 0 ? (monthlyNetProfit / requiredMonthlyRevenue) * 100 : 0;
+    final profitPct = requiredMonthlyRevenue > 0 ? (monthlyNetProfit / requiredMonthlyRevenue) * 100 : 0.0;
 
     return EarningsResult(
       monthlyKm: monthlyKm,
