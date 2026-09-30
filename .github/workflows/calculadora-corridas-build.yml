@@ -1,7 +1,7 @@
-name: Calculadora Corridas APK - UI Fix
+name: Calculadora Corridas APK - v1.2
 on:
   push:
-    branches: [ "calculadora-corridas-ui-fix" ]
+    branches: [ "calculadora-corridas-v12" ]
   workflow_dispatch:
 
 jobs:
@@ -12,14 +12,14 @@ jobs:
 
       - name: Preparar projeto base
         run: |
-          rm -rf build_project ui_overlay
-          mkdir build_project ui_overlay
+          rm -rf build_project ui_overlay v12_overlay
+          mkdir build_project ui_overlay v12_overlay
           cat calcpart_00 calcpart_01 calcpart_02 calcpart_03 calcpart_04 calcpart_05 calcpart_06 > calculadora_project.zip.b64
           base64 -d calculadora_project.zip.b64 > project.zip
           unzip -q project.zip -d build_project
           echo "PROJECT_DIR=$(find build_project -mindepth 1 -maxdepth 1 -type d | head -1)" >> "$GITHUB_ENV"
 
-      - name: Aplicar correções visuais
+      - name: Aplicar correções visuais v1.1
         run: |
           base64 -d ui_overlay.zip.b64 > ui_overlay.zip
           unzip -q ui_overlay.zip -d ui_overlay
@@ -27,6 +27,12 @@ jobs:
           cp ui_overlay/patch_ui.py "$PROJECT_DIR/patch_ui.py"
           cd "$PROJECT_DIR"
           python3 patch_ui.py
+
+      - name: Aplicar melhorias v1.2
+        run: |
+          base64 -d v12_overlay.zip.b64 > v12_overlay.zip
+          unzip -q v12_overlay.zip -d v12_overlay
+          cp -R v12_overlay/app/. "$PROJECT_DIR/app/"
 
       - uses: actions/setup-java@v4
         with:
@@ -42,7 +48,7 @@ jobs:
           cd "$PROJECT_DIR"
           gradle testDebugUnitTest --stacktrace
 
-      - name: Gerar APK corrigido
+      - name: Gerar APK v1.2
         run: |
           cd "$PROJECT_DIR"
           gradle assembleDebug --stacktrace
@@ -50,9 +56,9 @@ jobs:
       - name: Coletar APK
         run: |
           mkdir -p apk-out
-          cp "$PROJECT_DIR/app/build/outputs/apk/debug/app-debug.apk" apk-out/Calculadora-Corridas-v1.1-UI-Corrigida.apk
+          cp "$PROJECT_DIR/app/build/outputs/apk/debug/app-debug.apk" apk-out/Calculadora-Corridas-v1.2.apk
 
       - uses: actions/upload-artifact@v4
         with:
-          name: Calculadora-Corridas-v1.1-UI-Corrigida
-          path: apk-out/Calculadora-Corridas-v1.1-UI-Corrigida.apk
+          name: Calculadora-Corridas-v1.2
+          path: apk-out/Calculadora-Corridas-v1.2.apk
