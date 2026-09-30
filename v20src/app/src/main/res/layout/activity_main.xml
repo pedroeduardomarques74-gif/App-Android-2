@@ -1,0 +1,462 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.core.widget.NestedScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/rootScroll"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:fillViewport="true"
+    android:background="@color/page_bg"
+    android:clipToPadding="false">
+
+    <LinearLayout
+        android:id="@+id/rootContent"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:paddingStart="20dp"
+        android:paddingEnd="20dp"
+        android:paddingTop="18dp"
+        android:paddingBottom="28dp">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Calculadora de Corridas"
+            android:textColor="@color/text_primary"
+            android:textSize="30sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:text="Origem e destino inteligentes para calcular sua corrida"
+            android:textColor="@color/text_secondary"
+            android:textSize="15sp" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="18dp"
+            android:text="Perfil de tarifa"
+            android:textColor="@color/text_secondary"
+            android:textSize="13sp" />
+
+        <Spinner
+            android:id="@+id/profileSpinner"
+            android:layout_width="match_parent"
+            android:layout_height="52dp"
+            android:layout_marginTop="4dp"
+            android:paddingStart="12dp"
+            android:paddingEnd="12dp" />
+
+        <com.google.android.material.card.MaterialCardView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="18dp"
+            app:cardCornerRadius="22dp"
+            app:cardElevation="0dp"
+            app:strokeWidth="1dp"
+            app:strokeColor="@color/border"
+            app:cardBackgroundColor="@color/card_bg_color">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="16dp">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="📍 ORIGEM"
+                    android:textColor="@color/text_secondary"
+                    android:textSize="12sp"
+                    android:textStyle="bold" />
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="6dp"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal">
+
+                    <EditText
+                        android:id="@+id/inputOrigin"
+                        android:layout_width="0dp"
+                        android:layout_height="56dp"
+                        android:layout_weight="1"
+                        android:background="@android:color/transparent"
+                        android:hint="Minha localização atual ou outra origem"
+                        android:imeOptions="actionNext"
+                        android:inputType="textPostalAddress"
+                        android:maxLines="1"
+                        android:padding="0dp"
+                        android:textColor="@color/text_primary"
+                        android:textColorHint="@color/text_secondary"
+                        android:textSize="18sp" />
+
+                    <ImageButton
+                        android:id="@+id/btnClearOrigin"
+                        android:layout_width="42dp"
+                        android:layout_height="42dp"
+                        android:background="?attr/selectableItemBackgroundBorderless"
+                        android:contentDescription="Limpar origem"
+                        android:src="@android:drawable/ic_menu_close_clear_cancel"
+                        android:tint="@color/text_secondary"
+                        android:visibility="gone" />
+                </LinearLayout>
+
+                <TextView
+                    android:id="@+id/txtOriginSecondary"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="Toque em “Localização atual” ou pesquise um endereço"
+                    android:textColor="@color/text_secondary"
+                    android:textSize="13sp" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnLocation"
+                    style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                    android:layout_width="match_parent"
+                    android:layout_height="48dp"
+                    android:layout_marginTop="12dp"
+                    android:text="Usar localização atual"
+                    android:textAllCaps="false"
+                    app:cornerRadius="14dp" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnSwap"
+                    style="@style/Widget.MaterialComponents.Button.TextButton"
+                    android:layout_width="52dp"
+                    android:layout_height="44dp"
+                    android:layout_gravity="center_horizontal"
+                    android:layout_marginTop="4dp"
+                    android:text="⇅"
+                    android:textSize="24sp"
+                    android:contentDescription="Trocar origem e destino" />
+
+                <View
+                    android:layout_width="match_parent"
+                    android:layout_height="1dp"
+                    android:background="@color/border" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="14dp"
+                    android:text="🏁 PARA ONDE?"
+                    android:textColor="@color/text_secondary"
+                    android:textSize="12sp"
+                    android:textStyle="bold" />
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="4dp"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal">
+
+                    <EditText
+                        android:id="@+id/inputDestination"
+                        android:layout_width="0dp"
+                        android:layout_height="56dp"
+                        android:layout_weight="1"
+                        android:background="@android:color/transparent"
+                        android:hint="Digite rua, número, bairro ou local"
+                        android:imeOptions="actionSearch"
+                        android:inputType="textPostalAddress"
+                        android:maxLines="1"
+                        android:padding="0dp"
+                        android:textColor="@color/text_primary"
+                        android:textColorHint="@color/text_secondary"
+                        android:textSize="18sp" />
+
+                    <ImageButton
+                        android:id="@+id/btnClearDestination"
+                        android:layout_width="42dp"
+                        android:layout_height="42dp"
+                        android:background="?attr/selectableItemBackgroundBorderless"
+                        android:contentDescription="Limpar destino"
+                        android:src="@android:drawable/ic_menu_close_clear_cancel"
+                        android:tint="@color/text_secondary"
+                        android:visibility="gone" />
+                </LinearLayout>
+
+                <TextView
+                    android:id="@+id/txtDestinationSecondary"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="Rua, número, bairro ou estabelecimento"
+                    android:textColor="@color/text_secondary"
+                    android:textSize="13sp" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnFavorites"
+                    style="@style/Widget.MaterialComponents.Button.TextButton"
+                    android:layout_width="wrap_content"
+                    android:layout_height="44dp"
+                    android:layout_marginTop="4dp"
+                    android:text="★ Favoritos"
+                    android:textAllCaps="false" />
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
+
+        <com.google.android.material.card.MaterialCardView
+            android:id="@+id/addressPanel"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            app:cardCornerRadius="18dp"
+            app:cardElevation="0dp"
+            app:strokeWidth="1dp"
+            app:strokeColor="@color/border"
+            app:cardBackgroundColor="@color/card_bg_color">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="14dp">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal">
+
+                    <TextView
+                        android:id="@+id/txtSearchTitle"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="Digite rua, número, bairro ou local"
+                        android:textColor="@color/text_primary"
+                        android:textSize="14sp"
+                        android:textStyle="bold" />
+
+                    <ProgressBar
+                        android:id="@+id/progressAddress"
+                        android:layout_width="22dp"
+                        android:layout_height="22dp"
+                        android:visibility="gone" />
+                </LinearLayout>
+
+                <LinearLayout
+                    android:id="@+id/suggestionContainer"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:orientation="vertical" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnOtherCities"
+                    style="@style/Widget.MaterialComponents.Button.TextButton"
+                    android:layout_width="match_parent"
+                    android:layout_height="44dp"
+                    android:text="🌎 Buscar em outras cidades"
+                    android:textAllCaps="false"
+                    android:visibility="gone" />
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
+
+        <com.google.android.material.card.MaterialCardView
+            android:id="@+id/selectedDestinationCard"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:visibility="gone"
+            app:cardCornerRadius="18dp"
+            app:cardElevation="0dp"
+            app:strokeWidth="1dp"
+            app:strokeColor="@color/border"
+            app:cardBackgroundColor="@color/card_bg_color">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="14dp">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="DESTINO CONFIRMADO"
+                    android:textColor="@color/text_secondary"
+                    android:textSize="11sp"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:id="@+id/txtSelectedDestination"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="4dp"
+                    android:textColor="@color/text_primary"
+                    android:textSize="18sp"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:id="@+id/txtSelectedDestinationSecondary"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="2dp"
+                    android:textColor="@color/text_secondary"
+                    android:textSize="13sp" />
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="10dp"
+                    android:orientation="horizontal">
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/btnDestEdit"
+                        style="@style/Widget.MaterialComponents.Button.TextButton"
+                        android:layout_width="0dp"
+                        android:layout_height="44dp"
+                        android:layout_weight="1"
+                        android:text="✏ Editar"
+                        android:textAllCaps="false" />
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/btnDestFavorite"
+                        style="@style/Widget.MaterialComponents.Button.TextButton"
+                        android:layout_width="0dp"
+                        android:layout_height="44dp"
+                        android:layout_weight="1"
+                        android:text="★ Favorito"
+                        android:textAllCaps="false" />
+                </LinearLayout>
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal">
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/btnWaze"
+                        android:layout_width="0dp"
+                        android:layout_height="50dp"
+                        android:layout_weight="1"
+                        android:layout_marginEnd="5dp"
+                        android:text="Abrir no Waze"
+                        android:textAllCaps="false"
+                        app:cornerRadius="14dp" />
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/btnNavigate"
+                        style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                        android:layout_width="0dp"
+                        android:layout_height="50dp"
+                        android:layout_weight="1"
+                        android:layout_marginStart="5dp"
+                        android:text="Navegar"
+                        android:textAllCaps="false"
+                        app:cornerRadius="14dp" />
+                </LinearLayout>
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="18dp"
+            android:text="Adicionais rápidos"
+            android:textColor="@color/text_secondary"
+            android:textSize="13sp" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal">
+
+            <CheckBox android:id="@+id/checkNight" android:layout_width="0dp" android:layout_height="48dp" android:layout_weight="1" android:text="Noturno" android:textColor="@color/text_primary"/>
+            <CheckBox android:id="@+id/checkPeak" android:layout_width="0dp" android:layout_height="48dp" android:layout_weight="1" android:text="Pico" android:textColor="@color/text_primary"/>
+        </LinearLayout>
+
+        <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal">
+            <CheckBox android:id="@+id/checkRain" android:layout_width="0dp" android:layout_height="48dp" android:layout_weight="1" android:text="Chuva" android:textColor="@color/text_primary"/>
+            <CheckBox android:id="@+id/checkRoad" android:layout_width="0dp" android:layout_height="48dp" android:layout_weight="1" android:text="Estrada" android:textColor="@color/text_primary"/>
+        </LinearLayout>
+
+        <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal">
+            <CheckBox android:id="@+id/checkRoundTrip" android:layout_width="0dp" android:layout_height="48dp" android:layout_weight="1" android:text="Ida e volta" android:textColor="@color/text_primary"/>
+            <CheckBox android:id="@+id/checkEmptyReturn" android:layout_width="0dp" android:layout_height="48dp" android:layout_weight="1" android:text="Volta vazia" android:textColor="@color/text_primary"/>
+        </LinearLayout>
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnCalculate"
+            android:layout_width="match_parent"
+            android:layout_height="56dp"
+            android:layout_marginTop="8dp"
+            android:text="Calcular corrida"
+            android:textAllCaps="false"
+            android:textStyle="bold"
+            app:cornerRadius="16dp" />
+
+        <com.google.android.material.card.MaterialCardView
+            android:id="@+id/routePreview"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:visibility="gone"
+            app:cardCornerRadius="16dp"
+            app:cardElevation="0dp"
+            app:strokeWidth="1dp"
+            app:strokeColor="@color/border"
+            app:cardBackgroundColor="@color/card_bg_color">
+            <TextView
+                android:id="@+id/txtRoutePreview"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:padding="14dp"
+                android:textColor="@color/text_primary"
+                android:textSize="14sp" />
+        </com.google.android.material.card.MaterialCardView>
+
+        <com.google.android.material.card.MaterialCardView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="14dp"
+            app:cardCornerRadius="22dp"
+            app:cardBackgroundColor="@color/primary_blue">
+
+            <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:padding="20dp">
+                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="VALOR RECOMENDADO" android:textColor="@android:color/white" android:textSize="13sp"/>
+                <TextView android:id="@+id/txtRecommended" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="4dp" android:text="R$ 0,00" android:textColor="@android:color/white" android:textSize="40sp" android:textStyle="bold"/>
+                <TextView android:id="@+id/txtRoute" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="4dp" android:text="Selecione origem e destino" android:textColor="@android:color/white" android:textSize="14sp"/>
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
+
+        <com.google.android.material.card.MaterialCardView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            app:cardCornerRadius="18dp"
+            app:cardBackgroundColor="@color/card_bg_color"
+            app:cardElevation="0dp">
+            <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:padding="16dp">
+                <TextView android:id="@+id/txtMetrics" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="Distância, tempo, custo e lucro aparecerão aqui." android:textColor="@color/text_primary" android:textSize="14sp"/>
+                <TextView android:id="@+id/txtSuggested" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="10dp" android:text="" android:textColor="@color/text_secondary" android:textSize="13sp"/>
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
+
+        <com.google.android.material.button.MaterialButton android:id="@+id/btnBreakdown" android:layout_width="match_parent" android:layout_height="48dp" android:layout_marginTop="12dp" android:text="Ver cálculo" android:textAllCaps="false"/>
+        <com.google.android.material.button.MaterialButton android:id="@+id/btnAdjust" style="@style/Widget.MaterialComponents.Button.OutlinedButton" android:layout_width="match_parent" android:layout_height="48dp" android:layout_marginTop="8dp" android:text="Ajustar preço" android:textAllCaps="false"/>
+        <com.google.android.material.button.MaterialButton android:id="@+id/btnWait" style="@style/Widget.MaterialComponents.Button.OutlinedButton" android:layout_width="match_parent" android:layout_height="48dp" android:layout_marginTop="8dp" android:text="Iniciar espera" android:textAllCaps="false"/>
+        <com.google.android.material.button.MaterialButton android:id="@+id/btnShare" style="@style/Widget.MaterialComponents.Button.OutlinedButton" android:layout_width="match_parent" android:layout_height="48dp" android:layout_marginTop="8dp" android:text="Compartilhar valor" android:textAllCaps="false"/>
+        <com.google.android.material.button.MaterialButton android:id="@+id/btnSave" style="@style/Widget.MaterialComponents.Button.OutlinedButton" android:layout_width="match_parent" android:layout_height="48dp" android:layout_marginTop="8dp" android:text="Salvar no histórico" android:textAllCaps="false"/>
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="18dp"
+            android:orientation="horizontal">
+            <com.google.android.material.button.MaterialButton android:id="@+id/navSimulator" style="@style/Widget.MaterialComponents.Button.TextButton" android:layout_width="0dp" android:layout_height="54dp" android:layout_weight="1" android:text="Simular" android:textAllCaps="false"/>
+            <com.google.android.material.button.MaterialButton android:id="@+id/navHistory" style="@style/Widget.MaterialComponents.Button.TextButton" android:layout_width="0dp" android:layout_height="54dp" android:layout_weight="1" android:text="Histórico" android:textAllCaps="false"/>
+            <com.google.android.material.button.MaterialButton android:id="@+id/navSummary" style="@style/Widget.MaterialComponents.Button.TextButton" android:layout_width="0dp" android:layout_height="54dp" android:layout_weight="1" android:text="Resumo" android:textAllCaps="false"/>
+            <com.google.android.material.button.MaterialButton android:id="@+id/navSettings" style="@style/Widget.MaterialComponents.Button.TextButton" android:layout_width="0dp" android:layout_height="54dp" android:layout_weight="1" android:text="Config." android:textAllCaps="false"/>
+        </LinearLayout>
+
+    </LinearLayout>
+</androidx.core.widget.NestedScrollView>
