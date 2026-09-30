@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="page_bg">#F5F7FB</color>
+    <color name="card_bg_color">#FFFFFF</color>
+    <color name="border">#E3E7EF</color>
+    <color name="primary_blue">#2463EB</color>
+</resources>
