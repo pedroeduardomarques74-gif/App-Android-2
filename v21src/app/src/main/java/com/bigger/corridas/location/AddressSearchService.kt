@@ -268,7 +268,7 @@ class AddressSearchService {
             t in setOf("place_of_worship","church") || n.contains("igreja") -> "Igreja" to "⛪"
             t in setOf("neighbourhood","suburb","quarter") || (!neighborhood.isNullOrBlank() && street.isNullOrBlank()) -> "Bairro" to "📍"
             t in setOf("city","town","municipality","village") -> "Cidade" to "🏙️"
-            !street.isNullOrBlank() && !firstNonBlank(JSONObject().apply{}, "none").isNullOrBlank() -> "Endereço" to "🏠"
+            name.isBlank() && !street.isNullOrBlank() -> "Endereço" to "🏠"
             c == "amenity" || c == "shop" || c == "tourism" || c == "office" -> "Estabelecimento" to "📌"
             else -> "Local" to "📍"
         }
